@@ -120,4 +120,28 @@
   <metadata name="toolStripMenu.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>17, 17</value>
   </metadata>
+  <metadata name="statusStrip.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>147, 17</value>
+  </metadata>
+  <metadata name="notifyIcon.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>256, 17</value>
+  </metadata>
+  <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+  <data name="notifyIcon.Icon" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        AAABAAEAICAQAAAAAADoAgAAFgAAACgAAAAgAAAAQAAAAAEABAAAAAAAgAIAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAACAAACAAAAAgIAAgAAAAIAAgACAgAAAgICAAMDAwAAAAP8AAP8AAAD//wD/AAAA/wD/AP//
+        AAD///8AAAAAAAB3d3d3d3cAAAAAAAAAAAB3d4j//4h3dwAAAAAAAAB3ePh3d3d3j4d3AAAAAAAHePh2
+        ZmZmZmePh3AAAAAAd4h2ZmZERMZmZ4h3AAAAB3+HZmZkZ3dsxmZ493AAAHeIdmZmRI/4ZMzGZ4h3AAB4
+        h2ZmZkb//2TMzGZ4hwAHf3ZmZmZG//9kzMxmZ/dwB4hmZmZmRoiPZGxmRmaIcHf3ZmZmZkaIj2RkRERm
+        f3d3h2ZmZmZGiI9kZERERmh3eIdmZmZmRoiPZGREREZnh3h2ZmZmZkaIj2RERERGZ4d/d2ZmZmZGiI9k
+        RERERmf3f3dmZmZmZoiIZERERERm9393ZmZmZkaIj2RkRERGZ/d/d3ZmZmZmiI9kZERERmf3eHd3d3d3
+        ZoiPZGZmZmZnh3iHd3d3d3eP+GRkRmRmZ4d3h3d3d3d3d3d2ZmZmZnh3d/d3d3d3d2ZmZ2ZmZmZ/dweI
+        h3d3d3d4+Gd2ZmZniHAHf4h3d3d3//92d2Zmd/dwAHiId3d3d///hnd2d3iHAAB3iId3d3eP/3d3d3eI
+        dwAAB3+Ih3d3eId3d3d493AAAAB3iIiHd3d3d3d3iHcAAAAAB3j4iIh3d3d3j4dwAAAAAAB3ePiIiHd4
+        j4d3AAAAAAAAAHd3iP//iHd3AAAAAAAAAAAAd3d3d3d3AAAAAAD/wAP//wAA//wAAD/4AAAf8AAAD+AA
+        AAfAAAADwAAAA4AAAAGAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAgAAAAYAAAAHAAAADwAAAA+AAAAfwAAAP+AAAH/wAAD//AAD//8AD/w==
+</value>
+  </data>
 </root>

@@ -2,18 +2,27 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>LucasVerissimo.XrmToolBox.FieldChangeMonitor</id>
-    <version>1.0.0.1</version>
+    <version>1.1.0.1</version>
     <title>Field Change Monitor</title>
     <authors>Lucas Verissimo</authors>
     <owners>Lucas Verissimo</owners>
     <projectUrl>https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor</projectUrl>
-    <iconUrl>https://raw.githubusercontent.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/main/assets/field-change-monitor-128.png</iconUrl>
+    <icon>field-change-monitor-128.png</icon>
     <readme>README.md</readme>
     <license type="expression">MIT</license>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>Monitor Dataverse table field changes with FetchXML filters, multiple active watches, condition builder, lookup/option selectors, and Windows alerts.</description>
+    <description>Monitor Dataverse table field changes with visual and FetchXML filters, persistent and shareable monitor definitions, multiple active watches, structured change history, and Windows alerts.</description>
     <summary>Monitor Dataverse field changes from XrmToolBox.</summary>
-    <releaseNotes>1.0.0.1: Use a direct public icon URL for XrmToolBox Tool Library validation.</releaseNotes>
+    <releaseNotes>1.1.0.1:
+- Redesigned interface with combined table, frequency, and field selection.
+- Added required monitor names and editing of existing monitors.
+- Added pause, resume, remove, and multi-selection actions.
+- Added persistent monitor definitions restored per Dataverse environment.
+- Added versioned JSON export and import with metadata validation.
+- Added editable FetchXML validation and synchronization with the visual filter builder.
+- Added structured recent-change grid with ModifiedOn, ModifiedBy, record link, field, and old/new values.
+- Added environment and monitor names to Windows notification titles.
+- Added active and paused monitor counters.</releaseNotes>
     <copyright>Copyright (c) Lucas Verissimo 2026</copyright>
     <tags>XrmToolBox Dataverse Dynamics365 FetchXML Monitor FieldChange</tags>
     <dependencies>
@@ -24,6 +33,7 @@
   </metadata>
   <files>
     <file src="bin\Release\LucasVerissimo.XrmToolBox.FieldChangeMonitor.dll" target="lib\net48\Plugins" />
+    <file src="assets\field-change-monitor-128.png" target="" />
     <file src="README.md" target="" />
   </files>
 </package>

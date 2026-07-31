@@ -5,7 +5,10 @@ using Microsoft.Xrm.Sdk.Metadata;
 using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Security;
 using System.Text;
@@ -14,6 +17,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml.Linq;
 using XrmToolBox.Extensibility;
+using Newtonsoft.Json;
 
 namespace XrmTool_bravo
 {
@@ -30,12 +34,20 @@ namespace XrmTool_bravo
         private readonly object monitorsLock = new object();
         private readonly object serviceLock = new object();
         private bool isRefreshingColumnList;
+        private string currentEnvironmentName = "Ambiente Dataverse";
+        private string currentEnvironmentUrl;
+        private bool savedMonitorsRestored;
+        private ActiveMonitor editingMonitor;
+        private bool editingMonitorWasPaused;
 
         public MyPluginControl()
         {
             InitializeComponent();
+            ApplyVisualTheme();
             PopulateConditionOperators();
             SetMonitoringControls(false);
+            UpdateConfigurationSummary();
+            ResizeConfigurationSummary();
         }
 
         private void MyPluginControl_Load(object sender, EventArgs e)
@@ -49,6 +61,8 @@ namespace XrmTool_bravo
             {
                 LogInfo("Settings found and loaded");
             }
+
+            RestoreSavedMonitorsIfPossible();
         }
 
         private void tsbClose_Click(object sender, EventArgs e)
@@ -63,7 +77,7 @@ namespace XrmTool_bravo
 
         private void btnStart_Click(object sender, EventArgs e)
         {
-            ExecuteMethod(StartMonitoring);
+            ExecuteMethod(editingMonitor == null ? (Action)StartMonitoring : SaveMonitorEdits);
         }
 
         private void btnStop_Click(object sender, EventArgs e)
@@ -84,6 +98,57 @@ namespace XrmTool_bravo
         private void txtColumnSearch_TextChanged(object sender, EventArgs e)
         {
             ApplyColumnFilter();
+        }
+
+        private void ConfigurationValueChanged(object sender, EventArgs e)
+        {
+            UpdateConfigurationSummary();
+        }
+
+        private void ListView_SizeChanged(object sender, EventArgs e)
+        {
+            if (sender == lvConditions && lvConditions.ClientSize.Width > 120)
+            {
+                var width = lvConditions.ClientSize.Width;
+                colConditionField.Width = (int)(width * 0.36);
+                colConditionOperator.Width = (int)(width * 0.27);
+                colConditionValue.Width = Math.Max(80, width - colConditionField.Width - colConditionOperator.Width - 5);
+            }
+            else if (sender == lvActiveMonitors && lvActiveMonitors.ClientSize.Width > 180)
+            {
+                var width = lvActiveMonitors.ClientSize.Width;
+                colActiveName.Width = (int)(width * 0.20);
+                colActiveEntity.Width = (int)(width * 0.16);
+                colActiveColumns.Width = (int)(width * 0.20);
+                colActiveInterval.Width = (int)(width * 0.09);
+                colActiveStatus.Width = (int)(width * 0.14);
+                colActiveFilter.Width = Math.Max(90, width - colActiveName.Width - colActiveEntity.Width - colActiveColumns.Width -
+                    colActiveInterval.Width - colActiveStatus.Width - 5);
+            }
+            else if (sender == lvRecentChanges && lvRecentChanges.ClientSize.Width > 300)
+            {
+                var width = lvRecentChanges.ClientSize.Width;
+                colChangeModifiedOn.Width = 135;
+                colChangeRecordId.Width = 245;
+                colChangeModifiedBy.Width = 150;
+                colChangeRecordName.Width = 150;
+                colChangeField.Width = 130;
+                colChangeMonitor.Width = 150;
+                colChangeValues.Width = Math.Max(220, width - 970);
+            }
+        }
+
+        private void btnToggleAdvanced_Click(object sender, EventArgs e)
+        {
+            var showAdvanced = !txtFilterXml.Visible;
+            txtFilterXml.Visible = showAdvanced;
+            lblFilterHint.Visible = showAdvanced;
+            btnSaveFilterXml.Visible = showAdvanced;
+            filterLayout.RowStyles[4].SizeType = SizeType.Absolute;
+            filterLayout.RowStyles[4].Height = showAdvanced ? 92F : 0F;
+            btnToggleAdvanced.Text = showAdvanced
+                ? "v  Opcoes avancadas - Ocultar FetchXML"
+                : ">  Opcoes avancadas - Editar FetchXML";
         }
 
         private void clbColumns_ItemCheck(object sender, ItemCheckEventArgs e)
@@ -107,6 +172,8 @@ namespace XrmTool_bravo
             {
                 checkedMonitoredColumns.Remove(item.LogicalName);
             }
+
+            BeginInvoke(new Action(UpdateConfigurationSummary));
         }
 
         private void txtConditionFieldSearch_TextChanged(object sender, EventArgs e)
@@ -146,6 +213,7 @@ namespace XrmTool_bravo
             txtConditionValue.Clear();
             txtFilterXml.Clear();
             SetStatus("Filtro limpo.");
+            UpdateConfigurationSummary();
         }
 
         private void btnPickConditionValue_Click(object sender, EventArgs e)
@@ -156,6 +224,73 @@ namespace XrmTool_bravo
         private void btnStopSelectedMonitor_Click(object sender, EventArgs e)
         {
             StopSelectedMonitor();
+        }
+
+        private void btnSaveFilterXml_Click(object sender, EventArgs e)
+        {
+            SaveFilterXmlToBuilder();
+        }
+
+        private void btnRemoveSelectedMonitors_Click(object sender, EventArgs e)
+        {
+            RemoveSelectedMonitors();
+        }
+
+        private void btnPauseSelectedMonitors_Click(object sender, EventArgs e)
+        {
+            TogglePauseSelectedMonitors();
+        }
+
+        private void btnSelectAllMonitors_Click(object sender, EventArgs e)
+        {
+            foreach (ListViewItem item in lvActiveMonitors.Items)
+            {
+                item.Selected = true;
+            }
+
+            lvActiveMonitors.Focus();
+        }
+
+        private void btnExportMonitors_Click(object sender, EventArgs e)
+        {
+            ExportSelectedMonitors();
+        }
+
+        private void btnImportMonitors_Click(object sender, EventArgs e)
+        {
+            ImportMonitors();
+        }
+
+        private void btnEditMonitor_Click(object sender, EventArgs e)
+        {
+            BeginEditingSelectedMonitor();
+        }
+
+        private void lvActiveMonitors_DoubleClick(object sender, EventArgs e)
+        {
+            BeginEditingSelectedMonitor();
+        }
+
+        private void btnCancelEdit_Click(object sender, EventArgs e)
+        {
+            CancelMonitorEditing(true);
+        }
+
+        private void lvRecentChanges_MouseClick(object sender, MouseEventArgs e)
+        {
+            var hit = lvRecentChanges.HitTest(e.Location);
+            if (hit.Item == null || hit.SubItem == null || hit.Item.SubItems.IndexOf(hit.SubItem) != 1)
+            {
+                return;
+            }
+
+            var change = hit.Item.Tag as FieldChange;
+            if (change == null)
+            {
+                return;
+            }
+
+            OpenRecordInBrowser(change);
         }
 
         private void LoadColumns()
@@ -212,6 +347,7 @@ namespace XrmTool_bravo
 
                     AddLog($"Colunas carregadas para {entityLogicalName}.");
                     SetStatus($"{clbColumns.Items.Count} colunas disponiveis para {entityLogicalName}.");
+                    UpdateConfigurationSummary();
                 }
             });
         }
@@ -241,9 +377,275 @@ namespace XrmTool_bravo
 
             AddActiveMonitorListItem(monitor);
             SetMonitoringControls(false);
+            PersistMonitorConfigurations();
             AddLog($"Monitor adicionado para {configuration.EntityLogicalName} a cada {configuration.IntervalSeconds} segundo(s).");
             SetStatus("Monitorando...");
             notifyIcon.Visible = true;
+
+            StartMonitorTask(monitor);
+        }
+
+        private void BeginEditingSelectedMonitor()
+        {
+            if (editingMonitor != null)
+            {
+                MessageBox.Show("Conclua ou cancele a edicao atual.", "Edicao em andamento", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (lvActiveMonitors.SelectedItems.Count != 1)
+            {
+                MessageBox.Show("Selecione exatamente um monitoramento para editar.", "Selecao obrigatoria", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var monitor = lvActiveMonitors.SelectedItems[0].Tag as ActiveMonitor;
+            if (monitor == null)
+            {
+                return;
+            }
+
+            editingMonitor = monitor;
+            editingMonitorWasPaused = monitor.IsPaused;
+            monitor.IsPaused = true;
+            UpdateActiveMonitorStatus(monitor, "Editando");
+            SetEditingUiState(true);
+            SetMonitoringControls(false);
+
+            WorkAsync(new WorkAsyncInfo
+            {
+                Message = $"Carregando configuracao de {monitor.DisplayName}",
+                Work = (worker, args) =>
+                {
+                    args.Result = (RetrieveEntityResponse)Service.Execute(new RetrieveEntityRequest
+                    {
+                        LogicalName = monitor.Configuration.EntityLogicalName,
+                        EntityFilters = EntityFilters.Attributes
+                    });
+                },
+                PostWorkCallBack = args =>
+                {
+                    if (editingMonitor != monitor)
+                    {
+                        return;
+                    }
+
+                    if (args.Error != null)
+                    {
+                        MessageBox.Show(args.Error.Message, "Nao foi possivel editar", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        CancelMonitorEditing(false);
+                        return;
+                    }
+
+                    var metadata = ((RetrieveEntityResponse)args.Result).EntityMetadata;
+                    currentEntityMetadata = metadata;
+                    currentEntityLogicalName = monitor.Configuration.EntityLogicalName;
+                    txtMonitorName.Text = monitor.DisplayName;
+                    txtEntityLogicalName.Text = monitor.Configuration.EntityLogicalName;
+                    nudIntervalSeconds.Value = Math.Max(nudIntervalSeconds.Minimum,
+                        Math.Min(nudIntervalSeconds.Maximum, monitor.Configuration.IntervalSeconds));
+                    PopulateColumns(metadata);
+                    foreach (var column in monitor.Configuration.MonitoredColumns)
+                    {
+                        checkedMonitoredColumns.Add(column);
+                    }
+                    ApplyColumnFilter();
+                    PopulateConditionAttributes(metadata);
+                    LoadFilterForEditing(monitor.Configuration.FilterXml);
+                    UpdateConfigurationSummary();
+                    SetStatus($"Editando {monitor.DisplayName}.");
+                }
+            });
+        }
+
+        private void LoadFilterForEditing(string filterXml)
+        {
+            filterConditions.Clear();
+            txtFilterXml.Text = filterXml ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(filterXml))
+            {
+                RefreshConditionList();
+                return;
+            }
+
+            try
+            {
+                var filter = XElement.Parse(filterXml);
+                if (filter.Descendants("filter").Any())
+                {
+                    throw new InvalidOperationException("O filtro possui grupos aninhados.");
+                }
+
+                var filterType = ((string)filter.Attribute("type") ?? "and").ToLowerInvariant();
+                foreach (var element in filter.Elements("condition"))
+                {
+                    var attributeName = (string)element.Attribute("attribute");
+                    var operatorName = (string)element.Attribute("operator");
+                    var attribute = allConditionAttributeItems.FirstOrDefault(item =>
+                        string.Equals(item.LogicalName, attributeName, StringComparison.OrdinalIgnoreCase));
+                    var conditionOperator = cboConditionOperator.Items.Cast<object>().OfType<ConditionOperatorItem>()
+                        .FirstOrDefault(item => string.Equals(item.Operator, operatorName, StringComparison.OrdinalIgnoreCase));
+                    if (string.IsNullOrWhiteSpace(attributeName) || conditionOperator == null)
+                    {
+                        throw new InvalidOperationException("Uma condicao nao pode ser representada pelo construtor visual.");
+                    }
+
+                    var values = element.Elements("value").Select(value => value.Value).ToList();
+                    var singleValue = (string)element.Attribute("value");
+                    if (singleValue != null)
+                    {
+                        values.Insert(0, singleValue);
+                    }
+
+                    filterConditions.Add(new FilterCondition
+                    {
+                        AttributeLogicalName = attributeName,
+                        AttributeDisplayName = attribute == null ? attributeName : attribute.DisplayName,
+                        Operator = conditionOperator.Operator,
+                        OperatorDisplayName = conditionOperator.DisplayName,
+                        Values = values
+                    });
+                }
+
+                cboFilterType.SelectedItem = filterType == "or" ? "or" : "and";
+                txtFilterXml.Text = filter.ToString();
+                RefreshConditionList();
+            }
+            catch (Exception ex)
+            {
+                filterConditions.Clear();
+                RefreshConditionList();
+                txtFilterXml.Text = filterXml;
+                AddLog($"Filtro de {editingMonitor?.DisplayName}: edite pelo FetchXML avancado. {ex.Message}");
+            }
+        }
+
+        private void SaveMonitorEdits()
+        {
+            if (editingMonitor == null)
+            {
+                return;
+            }
+
+            var configuration = BuildMonitoringConfiguration();
+            if (configuration == null)
+            {
+                return;
+            }
+
+            var monitor = editingMonitor;
+            monitor.CancellationTokenSource.Cancel();
+            monitor.Configuration = configuration;
+            monitor.CancellationTokenSource = new CancellationTokenSource();
+            monitor.Task = null;
+            monitor.PreviousSnapshot = new Dictionary<Guid, RecordSnapshot>();
+            monitor.IsPaused = editingMonitorWasPaused;
+            monitor.NeedsBaselineReset = true;
+            RefreshActiveMonitorListItem(monitor);
+            UpdateActiveMonitorStatus(monitor, monitor.IsPaused ? "Pausado" : "Iniciando");
+
+            editingMonitor = null;
+            SetEditingUiState(false);
+            if (!monitor.IsPaused)
+            {
+                StartMonitorTask(monitor);
+            }
+
+            PersistMonitorConfigurations();
+            SetMonitoringControls(false);
+            AddLog($"Monitoramento atualizado: {monitor.DisplayName}.");
+            SetStatus("Alteracoes do monitoramento salvas.");
+        }
+
+        private void CancelMonitorEditing(bool showStatus)
+        {
+            if (editingMonitor == null)
+            {
+                return;
+            }
+
+            var monitor = editingMonitor;
+            monitor.IsPaused = editingMonitorWasPaused;
+            monitor.NeedsBaselineReset = !editingMonitorWasPaused;
+            UpdateActiveMonitorStatus(monitor, editingMonitorWasPaused ? "Pausado" : "Retomando");
+            editingMonitor = null;
+            SetEditingUiState(false);
+            if (!monitor.IsPaused)
+            {
+                StartMonitorTask(monitor);
+            }
+
+            SetMonitoringControls(false);
+            if (showStatus)
+            {
+                SetStatus("Edicao cancelada; nenhuma alteracao foi aplicada.");
+            }
+        }
+
+        private void SetEditingUiState(bool editing)
+        {
+            btnStart.Text = editing ? "Salvar alteracoes" : "Iniciar monitoramento";
+            btnCancelEdit.Visible = editing;
+            btnStart.BringToFront();
+            btnCancelEdit.BringToFront();
+            ResizeConfigurationSummary();
+            lblConfigurationReady.Text = editing && editingMonitor != null
+                ? $"Editando: {editingMonitor.DisplayName}"
+                : "Configure o monitoramento";
+            lvActiveMonitors.Enabled = !editing;
+            btnEditMonitor.Enabled = !editing && lvActiveMonitors.Items.Count > 0;
+            btnRemoveSelectedMonitors.Enabled = !editing && HasActiveMonitors();
+            btnPauseSelectedMonitors.Enabled = !editing && HasActiveMonitors();
+            btnExportMonitors.Enabled = !editing && HasActiveMonitors();
+            btnImportMonitors.Enabled = !editing && Service != null;
+        }
+
+        private void summaryPanel_SizeChanged(object sender, EventArgs e)
+        {
+            ResizeConfigurationSummary();
+        }
+
+        private void ResizeConfigurationSummary()
+        {
+            if (lblConfigurationSummary == null || btnStart == null || btnCancelEdit == null)
+            {
+                return;
+            }
+
+            var rightBoundary = btnCancelEdit.Visible ? btnCancelEdit.Left : btnStart.Left;
+            lblConfigurationSummary.Width = Math.Max(80, rightBoundary - lblConfigurationSummary.Left - 12);
+            lblConfigurationReady.Width = Math.Max(80, rightBoundary - lblConfigurationReady.Left - 12);
+        }
+
+        private void RefreshActiveMonitorListItem(ActiveMonitor monitor)
+        {
+            if (monitor.ListViewItem == null)
+            {
+                return;
+            }
+
+            var item = monitor.ListViewItem;
+            item.SubItems[0].Text = monitor.DisplayName;
+            item.SubItems[1].Text = monitor.Configuration.EntityLogicalName;
+            item.SubItems[2].Text = string.Join(", ", monitor.Configuration.MonitoredColumns);
+            item.SubItems[3].Text = monitor.Configuration.IntervalSeconds.ToString(CultureInfo.InvariantCulture);
+            item.SubItems[4].Text = monitor.Status;
+            item.SubItems[5].Text = string.IsNullOrWhiteSpace(monitor.Configuration.FilterXml)
+                ? "(sem filtro)"
+                : monitor.Configuration.FilterXml;
+        }
+
+        private void StartMonitorTask(ActiveMonitor monitor)
+        {
+            if (monitor.Task != null && !monitor.Task.IsCompleted)
+            {
+                return;
+            }
+
+            if (monitor.CancellationTokenSource == null || monitor.CancellationTokenSource.IsCancellationRequested)
+            {
+                monitor.CancellationTokenSource = new CancellationTokenSource();
+            }
 
             var token = monitor.CancellationTokenSource.Token;
             monitor.Task = Task.Run(() => MonitorAsync(monitor, token), token);
@@ -251,6 +653,25 @@ namespace XrmTool_bravo
 
         private MonitoringConfiguration BuildMonitoringConfiguration()
         {
+            var monitorName = txtMonitorName.Text.Trim();
+            if (string.IsNullOrWhiteSpace(monitorName))
+            {
+                MessageBox.Show("Informe um nome para identificar o monitoramento.", "Nome obrigatorio", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtMonitorName.Focus();
+                return null;
+            }
+
+            lock (monitorsLock)
+            {
+                if (activeMonitors.Any(monitor => monitor != editingMonitor &&
+                    string.Equals(monitor.DisplayName, monitorName, StringComparison.CurrentCultureIgnoreCase)))
+                {
+                    MessageBox.Show("Ja existe um monitoramento com esse nome.", "Nome duplicado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtMonitorName.Focus();
+                    return null;
+                }
+            }
+
             var entityLogicalName = txtEntityLogicalName.Text.Trim();
             if (string.IsNullOrWhiteSpace(entityLogicalName))
             {
@@ -291,6 +712,7 @@ namespace XrmTool_bravo
 
             return new MonitoringConfiguration
             {
+                MonitorName = monitorName,
                 Service = Service,
                 EntityLogicalName = entityLogicalName,
                 PrimaryIdAttribute = currentEntityMetadata.PrimaryIdAttribute,
@@ -309,6 +731,20 @@ namespace XrmTool_bravo
 
             while (!cancellationToken.IsCancellationRequested)
             {
+                if (monitor.IsPaused)
+                {
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
                 try
                 {
                     var currentSnapshot = RetrieveSnapshot(configuration);
@@ -320,6 +756,7 @@ namespace XrmTool_bravo
                     if (isFirstRun)
                     {
                         monitor.PreviousSnapshot = currentSnapshot;
+                        monitor.NeedsBaselineReset = false;
                         isFirstRun = false;
                         RunOnUiThread(() =>
                         {
@@ -330,7 +767,19 @@ namespace XrmTool_bravo
                     }
                     else
                     {
-                        var changes = DetectChanges(monitor.PreviousSnapshot, currentSnapshot, configuration.MonitoredColumns);
+                        if (monitor.NeedsBaselineReset)
+                        {
+                            monitor.PreviousSnapshot = currentSnapshot;
+                            monitor.NeedsBaselineReset = false;
+                            RunOnUiThread(() =>
+                            {
+                                UpdateActiveMonitorStatus(monitor, $"Ativo ({currentSnapshot.Count})");
+                                AddLog($"[{monitor.DisplayName}] Monitoramento retomado com novo snapshot inicial.");
+                            });
+                            continue;
+                        }
+
+                        var changes = DetectChanges(monitor.PreviousSnapshot, currentSnapshot, configuration.MonitoredColumns, configuration.EntityLogicalName);
                         monitor.PreviousSnapshot = currentSnapshot;
 
                         RunOnUiThread(() =>
@@ -369,7 +818,11 @@ namespace XrmTool_bravo
                 }
             }
 
-            RunOnUiThread(() => UpdateActiveMonitorStatus(monitor, "Parado"));
+            if (monitor.CancellationTokenSource != null &&
+                monitor.CancellationTokenSource.Token == cancellationToken)
+            {
+                RunOnUiThread(() => UpdateActiveMonitorStatus(monitor, "Parado"));
+            }
         }
 
         private Dictionary<Guid, RecordSnapshot> RetrieveSnapshot(MonitoringConfiguration configuration)
@@ -418,6 +871,12 @@ namespace XrmTool_bravo
                     {
                         RecordId = recordId,
                         RecordName = GetRecordName(entity, configuration.PrimaryNameAttribute),
+                        ModifiedOn = entity.Contains("modifiedon") && entity["modifiedon"] is DateTime
+                            ? ((DateTime)entity["modifiedon"]).ToLocalTime()
+                            : DateTime.Now,
+                        ModifiedBy = FormatValue(
+                            entity.Contains("modifiedby") ? entity["modifiedby"] : null,
+                            entity.FormattedValues.Contains("modifiedby") ? entity.FormattedValues["modifiedby"] : null),
                         Values = values
                     };
                 }
@@ -431,7 +890,7 @@ namespace XrmTool_bravo
             return snapshot;
         }
 
-        private List<FieldChange> DetectChanges(Dictionary<Guid, RecordSnapshot> oldSnapshot, Dictionary<Guid, RecordSnapshot> currentSnapshot, List<string> monitoredColumns)
+        private List<FieldChange> DetectChanges(Dictionary<Guid, RecordSnapshot> oldSnapshot, Dictionary<Guid, RecordSnapshot> currentSnapshot, List<string> monitoredColumns, string entityLogicalName)
         {
             var changes = new List<FieldChange>();
 
@@ -460,6 +919,9 @@ namespace XrmTool_bravo
                         {
                             RecordId = currentRecord.RecordId,
                             RecordName = currentRecord.RecordName,
+                            EntityLogicalName = entityLogicalName,
+                            ModifiedOn = currentRecord.ModifiedOn,
+                            ModifiedBy = currentRecord.ModifiedBy,
                             ColumnLogicalName = column,
                             OldValue = oldValue == null ? "(vazio)" : oldValue.DisplayValue,
                             NewValue = currentValue == null ? "(vazio)" : currentValue.DisplayValue
@@ -476,6 +938,7 @@ namespace XrmTool_bravo
             foreach (var change in changes.Take(20))
             {
                 AddLog($"[{monitor.DisplayName}] {change.RecordName} [{change.RecordId}] - {change.ColumnLogicalName}: {change.OldValue} -> {change.NewValue}");
+                AddRecentChange(monitor, change);
             }
 
             if (changes.Count > 20)
@@ -489,11 +952,56 @@ namespace XrmTool_bravo
         private void ShowWindowsAlert(ActiveMonitor monitor, List<FieldChange> changes)
         {
             notifyIcon.Visible = true;
-            notifyIcon.BalloonTipTitle = $"Mudanca detectada - {monitor.DisplayName}";
+            notifyIcon.BalloonTipTitle = $"{currentEnvironmentName} - {monitor.DisplayName}";
             notifyIcon.BalloonTipText = BuildAlertMessage(changes);
             notifyIcon.BalloonTipIcon = ToolTipIcon.Warning;
             notifyIcon.ShowBalloonTip(10000);
             System.Media.SystemSounds.Exclamation.Play();
+        }
+
+        private void AddRecentChange(ActiveMonitor monitor, FieldChange change)
+        {
+            change.MonitorName = monitor.DisplayName;
+            var item = new ListViewItem(change.ModifiedOn.ToString("dd/MM/yyyy HH:mm:ss"));
+            item.SubItems.Add(change.RecordId.ToString("D"));
+            item.SubItems.Add(change.ModifiedBy);
+            item.SubItems.Add(change.RecordName);
+            item.SubItems.Add(change.ColumnLogicalName);
+            item.SubItems.Add($"{change.OldValue} -> {change.NewValue}");
+            item.SubItems.Add(monitor.DisplayName);
+            item.SubItems[1].ForeColor = Color.FromArgb(0, 102, 204);
+            item.UseItemStyleForSubItems = false;
+            item.Tag = change;
+            lvRecentChanges.Items.Insert(0, item);
+
+            while (lvRecentChanges.Items.Count > 500)
+            {
+                lvRecentChanges.Items.RemoveAt(lvRecentChanges.Items.Count - 1);
+            }
+        }
+
+        private void OpenRecordInBrowser(FieldChange change)
+        {
+            if (string.IsNullOrWhiteSpace(currentEnvironmentUrl))
+            {
+                MessageBox.Show("A URL do ambiente nao esta disponivel.", "Nao foi possivel abrir o registro", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var confirmation = MessageBox.Show(
+                $"Deseja abrir o registro {change.RecordId:D} no navegador padrao?",
+                "Abrir registro do Dataverse",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+            if (confirmation != DialogResult.Yes)
+            {
+                return;
+            }
+
+            var baseUrl = currentEnvironmentUrl.TrimEnd('/');
+            var recordId = Uri.EscapeDataString(change.RecordId.ToString("D"));
+            var url = $"{baseUrl}/main.aspx?pagetype=entityrecord&etn={Uri.EscapeDataString(change.EntityLogicalName)}&id={recordId}";
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
         }
 
         private static string BuildAlertMessage(List<FieldChange> changes)
@@ -524,6 +1032,330 @@ namespace XrmTool_bravo
             return value.Length <= 40 ? value : value.Substring(0, 37) + "...";
         }
 
+        private MonitorDefinition ToDefinition(ActiveMonitor monitor, bool includeEnvironment, bool includeGeneratedFetch)
+        {
+            return new MonitorDefinition
+            {
+                Name = monitor.DisplayName,
+                EntityLogicalName = monitor.Configuration.EntityLogicalName,
+                PrimaryIdAttribute = monitor.Configuration.PrimaryIdAttribute,
+                PrimaryNameAttribute = monitor.Configuration.PrimaryNameAttribute,
+                IntervalSeconds = monitor.Configuration.IntervalSeconds,
+                MonitoredColumns = monitor.Configuration.MonitoredColumns.ToList(),
+                FilterXml = monitor.Configuration.FilterXml,
+                FetchXml = includeGeneratedFetch ? monitor.Configuration.FetchXml : null,
+                IsPaused = monitor.IsPaused,
+                EnvironmentUrl = includeEnvironment ? currentEnvironmentUrl : null
+            };
+        }
+
+        private void PersistMonitorConfigurations()
+        {
+            if (mySettings == null)
+            {
+                return;
+            }
+
+            lock (monitorsLock)
+            {
+                var otherEnvironmentMonitors = (mySettings.SavedMonitors ?? new List<MonitorDefinition>())
+                    .Where(definition => !string.Equals(
+                        NormalizeEnvironmentUrl(definition.EnvironmentUrl),
+                        NormalizeEnvironmentUrl(currentEnvironmentUrl),
+                        StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                otherEnvironmentMonitors.AddRange(activeMonitors
+                    .Select(monitor => ToDefinition(monitor, true, true))
+                    .ToList());
+                mySettings.SavedMonitors = otherEnvironmentMonitors;
+            }
+
+            SettingsManager.Instance.Save(GetType(), mySettings);
+        }
+
+        private void RestoreSavedMonitorsIfPossible()
+        {
+            if (savedMonitorsRestored || mySettings == null || Service == null || string.IsNullOrWhiteSpace(currentEnvironmentUrl))
+            {
+                return;
+            }
+
+            savedMonitorsRestored = true;
+            var definitions = mySettings.SavedMonitors ?? new List<MonitorDefinition>();
+            var matchingDefinitions = definitions.Where(definition =>
+                string.Equals(
+                    NormalizeEnvironmentUrl(definition.EnvironmentUrl),
+                    NormalizeEnvironmentUrl(currentEnvironmentUrl),
+                    StringComparison.OrdinalIgnoreCase)).ToList();
+
+            foreach (var definition in matchingDefinitions)
+            {
+                if (string.IsNullOrWhiteSpace(definition.FetchXml) || definition.MonitoredColumns == null)
+                {
+                    continue;
+                }
+
+                AddConfiguredMonitor(new MonitoringConfiguration
+                {
+                    MonitorName = EnsureUniqueMonitorName(definition.Name),
+                    Service = Service,
+                    EntityLogicalName = definition.EntityLogicalName,
+                    PrimaryIdAttribute = definition.PrimaryIdAttribute,
+                    PrimaryNameAttribute = definition.PrimaryNameAttribute,
+                    MonitoredColumns = definition.MonitoredColumns.ToList(),
+                    IntervalSeconds = Math.Max(1, definition.IntervalSeconds),
+                    FilterXml = definition.FilterXml,
+                    FetchXml = definition.FetchXml
+                }, "Restaurado", true);
+            }
+
+            if (matchingDefinitions.Count > 0)
+            {
+                AddLog($"{matchingDefinitions.Count} monitoramento(s) restaurado(s) como pausado(s).");
+                SetMonitoringControls(false);
+            }
+        }
+
+        private static string NormalizeEnvironmentUrl(string url)
+        {
+            return string.IsNullOrWhiteSpace(url) ? string.Empty : url.Trim().TrimEnd('/');
+        }
+
+        private void AddConfiguredMonitor(MonitoringConfiguration configuration, string source, bool isPaused)
+        {
+            var monitor = new ActiveMonitor
+            {
+                Id = Guid.NewGuid(),
+                Configuration = configuration,
+                CancellationTokenSource = new CancellationTokenSource(),
+                PreviousSnapshot = new Dictionary<Guid, RecordSnapshot>(),
+                CreatedOn = DateTime.Now,
+                Status = isPaused ? "Pausado" : "Iniciando",
+                IsPaused = isPaused,
+                NeedsBaselineReset = isPaused
+            };
+
+            lock (monitorsLock)
+            {
+                activeMonitors.Add(monitor);
+            }
+
+            AddActiveMonitorListItem(monitor);
+            AddLog($"{source}: {monitor.DisplayName} adicionado como {(isPaused ? "pausado" : "ativo")}.");
+            if (!isPaused)
+            {
+                StartMonitorTask(monitor);
+            }
+        }
+
+        private string EnsureUniqueMonitorName(string requestedName)
+        {
+            var baseName = string.IsNullOrWhiteSpace(requestedName) ? "Monitor importado" : requestedName.Trim();
+            var candidate = baseName;
+            var suffix = 2;
+
+            lock (monitorsLock)
+            {
+                while (activeMonitors.Any(monitor =>
+                    string.Equals(monitor.DisplayName, candidate, StringComparison.CurrentCultureIgnoreCase)))
+                {
+                    candidate = $"{baseName} ({suffix++})";
+                }
+            }
+
+            return candidate;
+        }
+
+        private void ExportSelectedMonitors()
+        {
+            if (lvActiveMonitors.SelectedItems.Count == 0)
+            {
+                MessageBox.Show("Selecione ao menos um monitoramento para exportar.", "Nenhum monitoramento selecionado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var selectedMonitors = lvActiveMonitors.SelectedItems.Cast<ListViewItem>()
+                .Select(item => item.Tag as ActiveMonitor)
+                .Where(monitor => monitor != null)
+                .ToList();
+            var package = new MonitorExportPackage
+            {
+                SchemaVersion = 1,
+                ExportedAtUtc = DateTime.UtcNow,
+                Monitors = selectedMonitors.Select(monitor => ToDefinition(monitor, false, false)).ToList()
+            };
+
+            using (var dialog = new SaveFileDialog
+            {
+                Filter = "Field Change Monitor (*.fcm.json)|*.fcm.json|JSON (*.json)|*.json",
+                FileName = selectedMonitors.Count == 1
+                    ? SanitizeFileName(selectedMonitors[0].DisplayName) + ".fcm.json"
+                    : "monitoramentos.fcm.json",
+                AddExtension = true,
+                DefaultExt = "fcm.json"
+            })
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                File.WriteAllText(dialog.FileName, JsonConvert.SerializeObject(package, Formatting.Indented,
+                    new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }), Encoding.UTF8);
+                SetStatus($"{selectedMonitors.Count} monitoramento(s) exportado(s).");
+                MessageBox.Show("Exportacao concluida.", "Monitoramentos exportados", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private static string SanitizeFileName(string value)
+        {
+            var invalidChars = Path.GetInvalidFileNameChars();
+            return new string((value ?? "monitoramento").Select(character =>
+                invalidChars.Contains(character) ? '_' : character).ToArray());
+        }
+
+        private void ImportMonitors()
+        {
+            if (Service == null)
+            {
+                MessageBox.Show("Conecte-se a um ambiente antes de importar.", "Conexao obrigatoria", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            MonitorExportPackage package;
+            using (var dialog = new OpenFileDialog
+            {
+                Filter = "Field Change Monitor (*.fcm.json)|*.fcm.json|JSON (*.json)|*.json",
+                Multiselect = false
+            })
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                try
+                {
+                    package = JsonConvert.DeserializeObject<MonitorExportPackage>(File.ReadAllText(dialog.FileName, Encoding.UTF8));
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Nao foi possivel ler o arquivo. " + ex.Message, "Importacao invalida", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+            }
+
+            if (package == null || package.SchemaVersion != 1 || package.Monitors == null || package.Monitors.Count == 0)
+            {
+                MessageBox.Show("O arquivo nao possui um pacote compativel com a versao 1.", "Importacao invalida", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            WorkAsync(new WorkAsyncInfo
+            {
+                Message = "Validando monitoramentos importados",
+                Work = (worker, args) =>
+                {
+                    var results = new List<ImportValidationResult>();
+                    foreach (var definition in package.Monitors)
+                    {
+                        var result = new ImportValidationResult { Definition = definition };
+                        try
+                        {
+                            string normalizedFilter;
+                            string filterError;
+                            if (!TryNormalizeFilterXml(definition.FilterXml, out normalizedFilter, out filterError))
+                            {
+                                throw new InvalidOperationException(filterError);
+                            }
+
+                            var response = (RetrieveEntityResponse)Service.Execute(new RetrieveEntityRequest
+                            {
+                                LogicalName = definition.EntityLogicalName,
+                                EntityFilters = EntityFilters.Attributes
+                            });
+                            var metadata = response.EntityMetadata;
+                            var readableColumns = new HashSet<string>(
+                                GetReadableAttributes(metadata).Select(attribute => attribute.LogicalName),
+                                StringComparer.OrdinalIgnoreCase);
+                            var missingColumns = (definition.MonitoredColumns ?? new List<string>())
+                                .Where(column => !readableColumns.Contains(column)).ToList();
+                            if (missingColumns.Count > 0)
+                            {
+                                throw new InvalidOperationException("Campos inexistentes ou sem leitura: " + string.Join(", ", missingColumns));
+                            }
+                            if (definition.MonitoredColumns == null || definition.MonitoredColumns.Count == 0)
+                            {
+                                throw new InvalidOperationException("Nenhum campo monitorado foi informado.");
+                            }
+
+                            result.Metadata = metadata;
+                            result.NormalizedFilter = normalizedFilter;
+                        }
+                        catch (Exception ex)
+                        {
+                            result.Error = ex.Message;
+                        }
+
+                        results.Add(result);
+                    }
+
+                    args.Result = results;
+                },
+                PostWorkCallBack = args =>
+                {
+                    if (args.Error != null)
+                    {
+                        MessageBox.Show(args.Error.Message, "Erro na importacao", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    var results = (List<ImportValidationResult>)args.Result;
+                    var importedCount = 0;
+                    foreach (var result in results.Where(result => string.IsNullOrWhiteSpace(result.Error)))
+                    {
+                        var definition = result.Definition;
+                        AddConfiguredMonitor(new MonitoringConfiguration
+                        {
+                            MonitorName = EnsureUniqueMonitorName(definition.Name),
+                            Service = Service,
+                            EntityLogicalName = definition.EntityLogicalName,
+                            PrimaryIdAttribute = result.Metadata.PrimaryIdAttribute,
+                            PrimaryNameAttribute = result.Metadata.PrimaryNameAttribute,
+                            MonitoredColumns = definition.MonitoredColumns.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                            IntervalSeconds = Math.Max(1, definition.IntervalSeconds),
+                            FilterXml = result.NormalizedFilter,
+                            FetchXml = BuildFetchXml(
+                                definition.EntityLogicalName,
+                                result.Metadata.PrimaryIdAttribute,
+                                result.Metadata.PrimaryNameAttribute,
+                                definition.MonitoredColumns,
+                                result.NormalizedFilter)
+                        }, "Importado", definition.IsPaused);
+                        importedCount++;
+                    }
+
+                    PersistMonitorConfigurations();
+                    SetMonitoringControls(false);
+                    var errors = results.Where(result => !string.IsNullOrWhiteSpace(result.Error))
+                        .Select(result => $"{result.Definition?.Name ?? "(sem nome)"}: {result.Error}")
+                        .ToList();
+                    var importedActiveCount = results.Count(result =>
+                        string.IsNullOrWhiteSpace(result.Error) && result.Definition != null && !result.Definition.IsPaused);
+                    var importedPausedCount = importedCount - importedActiveCount;
+                    var message = $"{importedCount} monitoramento(s) importado(s): " +
+                                  $"{importedActiveCount} ativo(s) e {importedPausedCount} pausado(s).";
+                    if (errors.Count > 0)
+                    {
+                        message += Environment.NewLine + Environment.NewLine + "Nao importados:" + Environment.NewLine +
+                                   string.Join(Environment.NewLine, errors);
+                    }
+                    MessageBox.Show(message, "Importacao concluida", MessageBoxButtons.OK,
+                        errors.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+                }
+            });
+        }
+
         private void StopMonitoring(bool addLog)
         {
             List<ActiveMonitor> monitorsToStop;
@@ -552,8 +1384,14 @@ namespace XrmTool_bravo
 
         private void StopSelectedMonitor()
         {
+            RemoveSelectedMonitors();
+        }
+
+        private void RemoveSelectedMonitors()
+        {
             if (lvActiveMonitors.SelectedItems.Count == 0)
             {
+                MessageBox.Show("Selecione ao menos um monitoramento.", "Nenhum monitoramento selecionado", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -581,6 +1419,7 @@ namespace XrmTool_bravo
             }
 
             SetMonitoringControls(false);
+            PersistMonitorConfigurations();
             if (!HasActiveMonitors())
             {
                 notifyIcon.Visible = false;
@@ -598,7 +1437,8 @@ namespace XrmTool_bravo
 
         private void AddActiveMonitorListItem(ActiveMonitor monitor)
         {
-            var item = new ListViewItem(monitor.Configuration.EntityLogicalName);
+            var item = new ListViewItem(monitor.DisplayName);
+            item.SubItems.Add(monitor.Configuration.EntityLogicalName);
             item.SubItems.Add(string.Join(", ", monitor.Configuration.MonitoredColumns));
             item.SubItems.Add(monitor.Configuration.IntervalSeconds.ToString(CultureInfo.InvariantCulture));
             item.SubItems.Add(monitor.Status);
@@ -614,7 +1454,7 @@ namespace XrmTool_bravo
 
             if (monitor.ListViewItem != null && monitor.ListViewItem.ListView != null)
             {
-                monitor.ListViewItem.SubItems[3].Text = status;
+                monitor.ListViewItem.SubItems[4].Text = status;
             }
         }
 
@@ -666,6 +1506,7 @@ namespace XrmTool_bravo
             }
 
             isRefreshingColumnList = false;
+            BeginInvoke(new Action(UpdateConfigurationSummary));
         }
 
         private void ApplyColumnFilter()
@@ -839,6 +1680,7 @@ namespace XrmTool_bravo
             SyncFilterXmlFromConditions();
             txtConditionValue.Clear();
             SetStatus("Condicao adicionada ao filtro.");
+            UpdateConfigurationSummary();
         }
 
         private static List<string> SplitConditionValues(string valueText)
@@ -967,6 +1809,7 @@ namespace XrmTool_bravo
             RefreshConditionList();
             SyncFilterXmlFromConditions();
             SetStatus("Condicao removida do filtro.");
+            UpdateConfigurationSummary();
         }
 
         private void RefreshConditionList()
@@ -988,8 +1831,14 @@ namespace XrmTool_bravo
 
         private void SyncFilterXmlFromConditions()
         {
-            if (txtFilterXml == null || filterConditions.Count == 0)
+            if (txtFilterXml == null)
             {
+                return;
+            }
+
+            if (filterConditions.Count == 0)
+            {
+                txtFilterXml.Clear();
                 return;
             }
 
@@ -1206,6 +2055,8 @@ namespace XrmTool_bravo
         {
             var attributes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             attributes.Add(primaryIdAttribute);
+            attributes.Add("modifiedon");
+            attributes.Add("modifiedby");
 
             if (!string.IsNullOrWhiteSpace(primaryNameAttribute))
             {
@@ -1439,10 +2290,244 @@ namespace XrmTool_bravo
             tsslStatus.Text = status;
         }
 
+        private void SaveFilterXmlToBuilder()
+        {
+            string normalizedFilter;
+            string error;
+            var xmlToValidate = txtFilterXml.Text;
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(xmlToValidate) &&
+                    xmlToValidate.TrimStart().StartsWith("<fetch", StringComparison.OrdinalIgnoreCase))
+                {
+                    var document = XElement.Parse(xmlToValidate);
+                    if (string.Equals(document.Name.LocalName, "fetch", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var entity = document.Elements().FirstOrDefault(element =>
+                            string.Equals(element.Name.LocalName, "entity", StringComparison.OrdinalIgnoreCase));
+                        if (entity == null)
+                        {
+                            throw new InvalidOperationException("O FetchXML nao possui uma tag entity.");
+                        }
+
+                        var filters = entity.Elements().Where(element =>
+                            string.Equals(element.Name.LocalName, "filter", StringComparison.OrdinalIgnoreCase)).ToList();
+                        if (filters.Count > 1)
+                        {
+                            throw new InvalidOperationException("O construtor visual aceita apenas um filtro principal.");
+                        }
+
+                        xmlToValidate = filters.Count == 0 ? string.Empty : filters[0].ToString();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("O FetchXML nao e valido. " + ex.Message, "FetchXML invalido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (!TryNormalizeFilterXml(xmlToValidate, out normalizedFilter, out error))
+            {
+                MessageBox.Show(error, "FetchXML invalido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(normalizedFilter))
+            {
+                filterConditions.Clear();
+                RefreshConditionList();
+                UpdateConfigurationSummary();
+                SetStatus("Filtro vazio salvo.");
+                return;
+            }
+
+            try
+            {
+                var filter = XElement.Parse(normalizedFilter);
+                if (filter.Elements("filter").Any() || filter.Descendants("filter").Any())
+                {
+                    throw new InvalidOperationException("Filtros aninhados nao podem ser editados pelo construtor visual.");
+                }
+
+                var parsedConditions = new List<FilterCondition>();
+                foreach (var conditionElement in filter.Elements("condition"))
+                {
+                    var unsupportedAttributes = conditionElement.Attributes()
+                        .Where(attribute => attribute.Name.LocalName != "attribute" &&
+                                            attribute.Name.LocalName != "operator" &&
+                                            attribute.Name.LocalName != "value")
+                        .Select(attribute => attribute.Name.LocalName)
+                        .ToList();
+                    if (unsupportedAttributes.Count > 0)
+                    {
+                        throw new InvalidOperationException(
+                            "A condicao possui propriedades nao suportadas pelo construtor visual: " +
+                            string.Join(", ", unsupportedAttributes));
+                    }
+
+                    var attributeLogicalName = (string)conditionElement.Attribute("attribute");
+                    var operatorName = (string)conditionElement.Attribute("operator");
+                    if (string.IsNullOrWhiteSpace(attributeLogicalName) || string.IsNullOrWhiteSpace(operatorName))
+                    {
+                        throw new InvalidOperationException("Cada condition deve possuir attribute e operator.");
+                    }
+
+                    var attributeItem = allConditionAttributeItems.FirstOrDefault(item =>
+                        string.Equals(item.LogicalName, attributeLogicalName, StringComparison.OrdinalIgnoreCase));
+                    var operatorItem = cboConditionOperator.Items.Cast<object>()
+                        .OfType<ConditionOperatorItem>()
+                        .FirstOrDefault(item => string.Equals(item.Operator, operatorName, StringComparison.OrdinalIgnoreCase));
+                    if (operatorItem == null)
+                    {
+                        throw new InvalidOperationException($"O operador '{operatorName}' nao e suportado pelo construtor visual.");
+                    }
+
+                    var values = conditionElement.Elements("value").Select(value => value.Value).ToList();
+                    var valueAttribute = (string)conditionElement.Attribute("value");
+                    if (!string.IsNullOrWhiteSpace(valueAttribute))
+                    {
+                        values.Insert(0, valueAttribute);
+                    }
+
+                    parsedConditions.Add(new FilterCondition
+                    {
+                        AttributeLogicalName = attributeLogicalName,
+                        AttributeDisplayName = attributeItem == null ? attributeLogicalName : attributeItem.DisplayName,
+                        Operator = operatorItem.Operator,
+                        OperatorDisplayName = operatorItem.DisplayName,
+                        Values = values
+                    });
+                }
+
+                filterConditions.Clear();
+                filterConditions.AddRange(parsedConditions);
+                var filterType = ((string)filter.Attribute("type") ?? "and").ToLowerInvariant();
+                cboFilterType.SelectedItem = filterType == "or" ? "or" : "and";
+                txtFilterXml.Text = filter.ToString();
+                RefreshConditionList();
+                UpdateConfigurationSummary();
+                SetStatus("FetchXML validado e carregado no construtor visual.");
+                MessageBox.Show("FetchXML valido. As condicoes foram atualizadas no grid.", "Filtro salvo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "O XML e valido, mas nao pode ser representado pelo construtor visual sem perder informacoes. " + ex.Message,
+                    "Filtro nao suportado",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+        }
+
+        private void UpdateConfigurationSummary()
+        {
+            if (lblConfigurationSummary == null || lblSelectedCount == null)
+            {
+                return;
+            }
+
+            var entityName = string.IsNullOrWhiteSpace(txtEntityLogicalName.Text)
+                ? "Selecione uma tabela"
+                : txtEntityLogicalName.Text.Trim();
+            var monitorName = string.IsNullOrWhiteSpace(txtMonitorName.Text)
+                ? "Monitor sem nome"
+                : txtMonitorName.Text.Trim();
+            var selectedCount = checkedMonitoredColumns.Count;
+            var conditionCount = filterConditions.Count;
+
+            lblSelectedCount.Text = $"{selectedCount} selecionado(s)";
+            lblConfigurationSummary.Text =
+                $"{monitorName}  •  {entityName}  •  {selectedCount} campo(s)  •  a cada {nudIntervalSeconds.Value:0} segundo(s)  •  {conditionCount} condição(ões)";
+            lblConfigurationReady.Text = editingMonitor != null
+                ? $"Editando: {editingMonitor.DisplayName}"
+                : (selectedCount > 0 && !string.IsNullOrWhiteSpace(txtEntityLogicalName.Text) && !string.IsNullOrWhiteSpace(txtMonitorName.Text)
+                    ? "Pronto para monitorar"
+                    : "Configure o monitoramento");
+        }
+
+        private void ApplyVisualTheme()
+        {
+            BackColor = Color.FromArgb(250, 250, 250);
+            Font = new Font("Segoe UI", 9F);
+            ApplyThemeToChildren(this);
+
+            btnStart.BackColor = Color.FromArgb(8, 127, 140);
+            btnStart.ForeColor = Color.White;
+            btnStart.FlatStyle = FlatStyle.Flat;
+            btnStart.FlatAppearance.BorderSize = 0;
+            btnStart.Font = new Font("Segoe UI Semibold", 10F);
+            lblConfigurationReady.ForeColor = Color.FromArgb(30, 41, 45);
+            lblConfigurationSummary.ForeColor = Color.FromArgb(90, 100, 105);
+            lblSelectedCount.ForeColor = Color.FromArgb(8, 127, 140);
+            btnToggleAdvanced.ForeColor = Color.FromArgb(8, 127, 140);
+        }
+
+        private static void ApplyThemeToChildren(Control parent)
+        {
+            foreach (Control control in parent.Controls)
+            {
+                if (control is GroupBox)
+                {
+                    control.Font = new Font("Segoe UI Semibold", 9.5F);
+                    control.BackColor = Color.White;
+                }
+                else if (control is TextBox || control is ComboBox || control is NumericUpDown ||
+                         control is CheckedListBox || control is ListView || control is ListBox)
+                {
+                    control.Font = new Font("Segoe UI", 9F);
+                    control.BackColor = Color.White;
+                }
+
+                ApplyThemeToChildren(control);
+            }
+        }
+
+        private void TogglePauseSelectedMonitors()
+        {
+            if (lvActiveMonitors.SelectedItems.Count == 0)
+            {
+                MessageBox.Show("Selecione ao menos um monitoramento.", "Nenhum monitoramento selecionado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            var selectedMonitors = lvActiveMonitors.SelectedItems
+                .Cast<ListViewItem>()
+                .Select(item => item.Tag as ActiveMonitor)
+                .Where(monitor => monitor != null)
+                .ToList();
+            var shouldPause = selectedMonitors.Any(monitor => !monitor.IsPaused);
+
+            foreach (var monitor in selectedMonitors)
+            {
+                monitor.IsPaused = shouldPause;
+                if (!shouldPause)
+                {
+                    monitor.NeedsBaselineReset = true;
+                    StartMonitorTask(monitor);
+                }
+                UpdateActiveMonitorStatus(monitor, shouldPause ? "Pausado" : "Retomando");
+                AddLog($"{monitor.DisplayName}: {(shouldPause ? "pausado" : "retomado")}.");
+            }
+
+            SetStatus(shouldPause ? "Monitoramento(s) pausado(s)." : "Monitoramento(s) retomado(s).");
+            SetMonitoringControls(false);
+            PersistMonitorConfigurations();
+        }
+
         private void SetMonitoringControls(bool monitoring)
         {
             var hasActiveMonitors = HasActiveMonitors();
+            int activeCount;
+            int pausedCount;
+            lock (monitorsLock)
+            {
+                activeCount = activeMonitors.Count(monitor => !monitor.IsPaused);
+                pausedCount = activeMonitors.Count(monitor => monitor.IsPaused);
+            }
+            tslActiveMonitors.Text = $"Ativos: {activeCount}  |  Pausados: {pausedCount}";
             txtEntityLogicalName.Enabled = true;
+            txtMonitorName.Enabled = true;
             btnLoadColumns.Enabled = true;
             txtColumnSearch.Enabled = true;
             clbColumns.Enabled = true;
@@ -1463,10 +2548,19 @@ namespace XrmTool_bravo
             btnStart.Enabled = true;
             btnStop.Enabled = hasActiveMonitors;
             btnStopSelectedMonitor.Enabled = hasActiveMonitors;
+            btnRemoveSelectedMonitors.Enabled = hasActiveMonitors && editingMonitor == null;
+            btnPauseSelectedMonitors.Enabled = hasActiveMonitors && editingMonitor == null;
+            btnSelectAllMonitors.Enabled = hasActiveMonitors && editingMonitor == null;
+            btnExportMonitors.Enabled = hasActiveMonitors && editingMonitor == null;
+            btnImportMonitors.Enabled = Service != null && editingMonitor == null;
+            btnEditMonitor.Enabled = hasActiveMonitors && editingMonitor == null;
+            lvActiveMonitors.Enabled = editingMonitor == null;
         }
 
         private void MyPluginControl_OnCloseTool(object sender, EventArgs e)
         {
+            CancelMonitorEditing(false);
+            PersistMonitorConfigurations();
             StopMonitoring(false);
             notifyIcon.Visible = false;
 
@@ -1478,10 +2572,12 @@ namespace XrmTool_bravo
 
         public override void UpdateConnection(IOrganizationService newService, ConnectionDetail detail, string actionName, object parameter)
         {
+            CancelMonitorEditing(false);
             base.UpdateConnection(newService, detail, actionName, parameter);
 
             if (HasActiveMonitors())
             {
+                PersistMonitorConfigurations();
                 StopMonitoring(true);
                 AddLog("Conexao alterada; monitoramento interrompido.");
             }
@@ -1491,6 +2587,21 @@ namespace XrmTool_bravo
                 mySettings.LastUsedOrganizationWebappUrl = detail.WebApplicationUrl;
                 LogInfo("Connection has changed to: {0}", detail.WebApplicationUrl);
             }
+
+            currentEnvironmentUrl = detail == null
+                ? null
+                : (!string.IsNullOrWhiteSpace(detail.WebApplicationUrl)
+                    ? detail.WebApplicationUrl
+                    : (!string.IsNullOrWhiteSpace(detail.OriginalUrl) ? detail.OriginalUrl : detail.OrganizationDataServiceUrl));
+            currentEnvironmentName = detail == null
+                ? "Ambiente Dataverse"
+                : (!string.IsNullOrWhiteSpace(detail.OrganizationFriendlyName)
+                    ? detail.OrganizationFriendlyName
+                    : (!string.IsNullOrWhiteSpace(detail.ConnectionName) ? detail.ConnectionName : "Ambiente Dataverse"));
+            tslConnection.Text = detail == null ? "Aguardando conexao" : "Conectado";
+            savedMonitorsRestored = false;
+            RestoreSavedMonitorsIfPossible();
+            SetMonitoringControls(false);
         }
 
         private sealed class AttributeListItem
@@ -1572,19 +2683,25 @@ namespace XrmTool_bravo
 
             public string Status { get; set; }
 
+            public volatile bool IsPaused;
+
+            public volatile bool NeedsBaselineReset;
+
             public ListViewItem ListViewItem { get; set; }
 
             public string DisplayName
             {
                 get
                 {
-                    return $"{Configuration.EntityLogicalName} #{CreatedOn:HHmmss}";
+                    return Configuration.MonitorName;
                 }
             }
         }
 
         private sealed class MonitoringConfiguration
         {
+            public string MonitorName { get; set; }
+
             public IOrganizationService Service { get; set; }
 
             public string EntityLogicalName { get; set; }
@@ -1608,6 +2725,10 @@ namespace XrmTool_bravo
 
             public string RecordName { get; set; }
 
+            public DateTime ModifiedOn { get; set; }
+
+            public string ModifiedBy { get; set; }
+
             public Dictionary<string, FieldValue> Values { get; set; }
         }
 
@@ -1624,11 +2745,30 @@ namespace XrmTool_bravo
 
             public string RecordName { get; set; }
 
+            public string EntityLogicalName { get; set; }
+
+            public string MonitorName { get; set; }
+
+            public DateTime ModifiedOn { get; set; }
+
+            public string ModifiedBy { get; set; }
+
             public string ColumnLogicalName { get; set; }
 
             public string OldValue { get; set; }
 
             public string NewValue { get; set; }
+        }
+
+        private sealed class ImportValidationResult
+        {
+            public MonitorDefinition Definition { get; set; }
+
+            public EntityMetadata Metadata { get; set; }
+
+            public string NormalizedFilter { get; set; }
+
+            public string Error { get; set; }
         }
     }
 }
