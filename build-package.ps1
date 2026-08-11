@@ -5,6 +5,9 @@ param(
 $ErrorActionPreference = "Stop"
 
 dotnet build .\XrmTool-bravo.csproj -c $Configuration
+if ($LASTEXITCODE -ne 0) {
+    throw "A compilacao falhou. O pacote nao sera criado."
+}
 
 $nuget = Get-Command nuget -ErrorAction SilentlyContinue
 if ($nuget) {
@@ -19,3 +22,4 @@ if (-not (Test-Path $localNuget)) {
 }
 
 & $localNuget pack .\LucasVerissimo.XrmToolBox.FieldChangeMonitor.nuspec -Properties Configuration=$Configuration -OutputDirectory .\bin\$Configuration
+exit $LASTEXITCODE

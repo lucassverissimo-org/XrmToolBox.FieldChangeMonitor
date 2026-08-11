@@ -106,6 +106,7 @@ namespace XrmTool_bravo
             this.technicalLogTab = new System.Windows.Forms.TabPage();
             this.lvRecentChanges = new System.Windows.Forms.ListView();
             this.colChangeModifiedOn = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.colChangeEventType = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.colChangeRecordId = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.colChangeModifiedBy = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.colChangeRecordName = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -115,6 +116,7 @@ namespace XrmTool_bravo
             this.lstEvents = new System.Windows.Forms.ListBox();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.tsslStatus = new System.Windows.Forms.ToolStripStatusLabel();
+            this.tsslCopyright = new System.Windows.Forms.ToolStripStatusLabel();
             this.notifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
             this.toolStripMenu.SuspendLayout();
             this.mainLayout.SuspendLayout();
@@ -214,7 +216,9 @@ namespace XrmTool_bravo
             this.tsbClose.Click += new System.EventHandler(this.tsbClose_Click);
             // 
             // mainLayout
-            // 
+            //
+            this.mainLayout.AutoScroll = true;
+            this.mainLayout.AutoScrollMinSize = new System.Drawing.Size(1100, 880);
             this.mainLayout.ColumnCount = 1;
             this.mainLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.mainLayout.Controls.Add(this.contentLayout, 0, 0);
@@ -226,9 +230,9 @@ namespace XrmTool_bravo
             this.mainLayout.Name = "mainLayout";
             this.mainLayout.Padding = new System.Windows.Forms.Padding(9, 10, 9, 10);
             this.mainLayout.RowCount = 3;
-            this.mainLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 62F));
-            this.mainLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 82F));
-            this.mainLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 38F));
+            this.mainLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 380F));
+            this.mainLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 90F));
+            this.mainLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.mainLayout.Size = new System.Drawing.Size(885, 602);
             this.mainLayout.TabIndex = 1;
             // 
@@ -243,6 +247,7 @@ namespace XrmTool_bravo
             this.contentLayout.Location = new System.Drawing.Point(11, 12);
             this.contentLayout.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.contentLayout.Name = "contentLayout";
+            this.contentLayout.MinimumSize = new System.Drawing.Size(1060, 360);
             this.contentLayout.RowCount = 1;
             this.contentLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.contentLayout.Size = new System.Drawing.Size(863, 318);
@@ -439,13 +444,14 @@ namespace XrmTool_bravo
             this.columnsButtonPanel.TabIndex = 1;
             // 
             // btnSelectAllColumns
-            // 
+            //
+            this.btnSelectAllColumns.AutoSize = true;
             this.btnSelectAllColumns.Location = new System.Drawing.Point(2, 2);
             this.btnSelectAllColumns.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.btnSelectAllColumns.Name = "btnSelectAllColumns";
             this.btnSelectAllColumns.Size = new System.Drawing.Size(86, 24);
             this.btnSelectAllColumns.TabIndex = 0;
-            this.btnSelectAllColumns.Text = "Selecionar tudo";
+            this.btnSelectAllColumns.Text = "Selecionar todos";
             this.btnSelectAllColumns.UseVisualStyleBackColor = true;
             this.btnSelectAllColumns.Click += new System.EventHandler(this.btnSelectAllColumns_Click);
             // 
@@ -857,6 +863,7 @@ namespace XrmTool_bravo
             this.summaryPanel.Location = new System.Drawing.Point(11, 338);
             this.summaryPanel.Margin = new System.Windows.Forms.Padding(2, 6, 2, 6);
             this.summaryPanel.Name = "summaryPanel";
+            this.summaryPanel.MinimumSize = new System.Drawing.Size(1060, 82);
             this.summaryPanel.Size = new System.Drawing.Size(863, 50);
             this.summaryPanel.TabIndex = 2;
             this.summaryPanel.SizeChanged += new System.EventHandler(this.summaryPanel_SizeChanged);
@@ -933,6 +940,7 @@ namespace XrmTool_bravo
             this.bottomLayout.Location = new System.Drawing.Point(11, 396);
             this.bottomLayout.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.bottomLayout.Name = "bottomLayout";
+            this.bottomLayout.MinimumSize = new System.Drawing.Size(1060, 250);
             this.bottomLayout.RowCount = 1;
             this.bottomLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.bottomLayout.Size = new System.Drawing.Size(863, 194);
@@ -1147,6 +1155,7 @@ namespace XrmTool_bravo
             // 
             this.lvRecentChanges.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.colChangeModifiedOn,
+            this.colChangeEventType,
             this.colChangeRecordId,
             this.colChangeModifiedBy,
             this.colChangeRecordName,
@@ -1164,6 +1173,8 @@ namespace XrmTool_bravo
             this.lvRecentChanges.SizeChanged += new System.EventHandler(this.ListView_SizeChanged);
             this.colChangeModifiedOn.Text = "ModifiedOn";
             this.colChangeModifiedOn.Width = 135;
+            this.colChangeEventType.Text = "Evento";
+            this.colChangeEventType.Width = 125;
             this.colChangeRecordId.Text = "ID do registro (clique para abrir)";
             this.colChangeRecordId.Width = 245;
             this.colChangeModifiedBy.Text = "ModifiedBy";
@@ -1194,19 +1205,29 @@ namespace XrmTool_bravo
             // 
             this.statusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.tsslStatus});
+            this.tsslStatus,
+            this.tsslCopyright});
             this.statusStrip.Location = new System.Drawing.Point(0, 644);
             this.statusStrip.Name = "statusStrip";
             this.statusStrip.Padding = new System.Windows.Forms.Padding(1, 0, 10, 0);
             this.statusStrip.Size = new System.Drawing.Size(885, 22);
+            this.statusStrip.SizingGrip = false;
             this.statusStrip.TabIndex = 2;
             this.statusStrip.Text = "statusStrip1";
             // 
             // tsslStatus
             // 
             this.tsslStatus.Name = "tsslStatus";
-            this.tsslStatus.Size = new System.Drawing.Size(43, 17);
-            this.tsslStatus.Text = "Pronto";
+            this.tsslStatus.Size = new System.Drawing.Size(78, 17);
+            this.tsslStatus.Text = "Status: pronto";
+            //
+            // tsslCopyright
+            //
+            this.tsslCopyright.Name = "tsslCopyright";
+            this.tsslCopyright.Size = new System.Drawing.Size(796, 17);
+            this.tsslCopyright.Spring = true;
+            this.tsslCopyright.Text = "Todos os direitos reservados © Lucas Veríssimo";
+            this.tsslCopyright.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // notifyIcon
             // 
@@ -1352,6 +1373,7 @@ namespace XrmTool_bravo
         private System.Windows.Forms.TabPage technicalLogTab;
         private System.Windows.Forms.ListView lvRecentChanges;
         private System.Windows.Forms.ColumnHeader colChangeModifiedOn;
+        private System.Windows.Forms.ColumnHeader colChangeEventType;
         private System.Windows.Forms.ColumnHeader colChangeRecordId;
         private System.Windows.Forms.ColumnHeader colChangeModifiedBy;
         private System.Windows.Forms.ColumnHeader colChangeRecordName;
@@ -1361,6 +1383,7 @@ namespace XrmTool_bravo
         private System.Windows.Forms.ListBox lstEvents;
         private System.Windows.Forms.StatusStrip statusStrip;
         private System.Windows.Forms.ToolStripStatusLabel tsslStatus;
+        private System.Windows.Forms.ToolStripStatusLabel tsslCopyright;
         private System.Windows.Forms.NotifyIcon notifyIcon;
     }
 }

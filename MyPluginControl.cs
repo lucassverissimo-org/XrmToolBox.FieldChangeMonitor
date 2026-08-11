@@ -37,6 +37,8 @@ namespace XrmTool_bravo
         private string currentEnvironmentName = "Ambiente Dataverse";
         private string currentEnvironmentUrl;
         private bool savedMonitorsRestored;
+        private bool recentChangesRestored;
+        private const int MaximumRecentChanges = 100;
         private ActiveMonitor editingMonitor;
         private bool editingMonitorWasPaused;
 
@@ -129,12 +131,13 @@ namespace XrmTool_bravo
             {
                 var width = lvRecentChanges.ClientSize.Width;
                 colChangeModifiedOn.Width = 135;
+                colChangeEventType.Width = 125;
                 colChangeRecordId.Width = 245;
                 colChangeModifiedBy.Width = 150;
                 colChangeRecordName.Width = 150;
                 colChangeField.Width = 130;
                 colChangeMonitor.Width = 150;
-                colChangeValues.Width = Math.Max(220, width - 970);
+                colChangeValues.Width = Math.Max(220, width - 1095);
             }
         }
 
@@ -279,7 +282,7 @@ namespace XrmTool_bravo
         private void lvRecentChanges_MouseClick(object sender, MouseEventArgs e)
         {
             var hit = lvRecentChanges.HitTest(e.Location);
-            if (hit.Item == null || hit.SubItem == null || hit.Item.SubItems.IndexOf(hit.SubItem) != 1)
+            if (hit.Item == null || hit.SubItem == null || hit.Item.SubItems.IndexOf(hit.SubItem) != 2)
             {
                 return;
             }
@@ -753,7 +756,7 @@ namespace XrmTool_bravo
                         break;
                     }
 
-                    if (isFirstRun)
+                    if (isFirstRun && monitor.PreviousSnapshot.Count == 0)
                     {
                         monitor.PreviousSnapshot = currentSnapshot;
                         monitor.NeedsBaselineReset = false;
@@ -767,20 +770,10 @@ namespace XrmTool_bravo
                     }
                     else
                     {
-                        if (monitor.NeedsBaselineReset)
-                        {
-                            monitor.PreviousSnapshot = currentSnapshot;
-                            monitor.NeedsBaselineReset = false;
-                            RunOnUiThread(() =>
-                            {
-                                UpdateActiveMonitorStatus(monitor, $"Ativo ({currentSnapshot.Count})");
-                                AddLog($"[{monitor.DisplayName}] Monitoramento retomado com novo snapshot inicial.");
-                            });
-                            continue;
-                        }
-
-                        var changes = DetectChanges(monitor.PreviousSnapshot, currentSnapshot, configuration.MonitoredColumns, configuration.EntityLogicalName);
+                        var changes = DetectChanges(monitor.PreviousSnapshot, currentSnapshot, configuration);
                         monitor.PreviousSnapshot = currentSnapshot;
+                        monitor.NeedsBaselineReset = false;
+                        isFirstRun = false;
 
                         RunOnUiThread(() =>
                         {
@@ -855,30 +848,7 @@ namespace XrmTool_bravo
                         continue;
                     }
 
-                    var values = new Dictionary<string, FieldValue>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var column in configuration.MonitoredColumns)
-                    {
-                        var rawValue = entity.Contains(column) ? entity[column] : null;
-                        var formattedValue = entity.FormattedValues.Contains(column) ? entity.FormattedValues[column] : null;
-                        values[column] = new FieldValue
-                        {
-                            NormalizedValue = NormalizeValue(rawValue),
-                            DisplayValue = FormatValue(rawValue, formattedValue)
-                        };
-                    }
-
-                    snapshot[recordId] = new RecordSnapshot
-                    {
-                        RecordId = recordId,
-                        RecordName = GetRecordName(entity, configuration.PrimaryNameAttribute),
-                        ModifiedOn = entity.Contains("modifiedon") && entity["modifiedon"] is DateTime
-                            ? ((DateTime)entity["modifiedon"]).ToLocalTime()
-                            : DateTime.Now,
-                        ModifiedBy = FormatValue(
-                            entity.Contains("modifiedby") ? entity["modifiedby"] : null,
-                            entity.FormattedValues.Contains("modifiedby") ? entity.FormattedValues["modifiedby"] : null),
-                        Values = values
-                    };
+                    snapshot[recordId] = CreateRecordSnapshot(entity, configuration);
                 }
 
                 moreRecords = result.MoreRecords;
@@ -890,7 +860,10 @@ namespace XrmTool_bravo
             return snapshot;
         }
 
-        private List<FieldChange> DetectChanges(Dictionary<Guid, RecordSnapshot> oldSnapshot, Dictionary<Guid, RecordSnapshot> currentSnapshot, List<string> monitoredColumns, string entityLogicalName)
+        private List<FieldChange> DetectChanges(
+            Dictionary<Guid, RecordSnapshot> oldSnapshot,
+            Dictionary<Guid, RecordSnapshot> currentSnapshot,
+            MonitoringConfiguration configuration)
         {
             var changes = new List<FieldChange>();
 
@@ -899,10 +872,23 @@ namespace XrmTool_bravo
                 RecordSnapshot oldRecord;
                 if (!oldSnapshot.TryGetValue(currentRecord.RecordId, out oldRecord))
                 {
+                    foreach (var column in configuration.MonitoredColumns)
+                    {
+                        FieldValue currentValue;
+                        currentRecord.Values.TryGetValue(column, out currentValue);
+                        changes.Add(CreateFieldChange(
+                            currentRecord,
+                            configuration.EntityLogicalName,
+                            column,
+                            ChangeKind.EnteredFilter,
+                            null,
+                            currentValue));
+                    }
+
                     continue;
                 }
 
-                foreach (var column in monitoredColumns)
+                foreach (var column in configuration.MonitoredColumns)
                 {
                     FieldValue oldValue;
                     FieldValue currentValue;
@@ -915,29 +901,140 @@ namespace XrmTool_bravo
 
                     if (!string.Equals(oldNormalizedValue, currentNormalizedValue, StringComparison.Ordinal))
                     {
-                        changes.Add(new FieldChange
-                        {
-                            RecordId = currentRecord.RecordId,
-                            RecordName = currentRecord.RecordName,
-                            EntityLogicalName = entityLogicalName,
-                            ModifiedOn = currentRecord.ModifiedOn,
-                            ModifiedBy = currentRecord.ModifiedBy,
-                            ColumnLogicalName = column,
-                            OldValue = oldValue == null ? "(vazio)" : oldValue.DisplayValue,
-                            NewValue = currentValue == null ? "(vazio)" : currentValue.DisplayValue
-                        });
+                        changes.Add(CreateFieldChange(
+                            currentRecord,
+                            configuration.EntityLogicalName,
+                            column,
+                            ChangeKind.ValueChanged,
+                            oldValue,
+                            currentValue));
                     }
+                }
+            }
+
+            foreach (var oldRecord in oldSnapshot.Values.Where(record => !currentSnapshot.ContainsKey(record.RecordId)))
+            {
+                var recordOutsideFilter = RetrieveRecordWithoutMonitorFilter(configuration, oldRecord.RecordId);
+                if (recordOutsideFilter == null)
+                {
+                    foreach (var column in configuration.MonitoredColumns)
+                    {
+                        FieldValue oldValue;
+                        oldRecord.Values.TryGetValue(column, out oldValue);
+                        changes.Add(CreateFieldChange(
+                            oldRecord,
+                            configuration.EntityLogicalName,
+                            column,
+                            ChangeKind.RecordUnavailable,
+                            oldValue,
+                            null));
+                    }
+
+                    continue;
+                }
+
+                foreach (var column in configuration.MonitoredColumns)
+                {
+                    FieldValue oldValue;
+                    FieldValue currentValue;
+                    oldRecord.Values.TryGetValue(column, out oldValue);
+                    recordOutsideFilter.Values.TryGetValue(column, out currentValue);
+                    changes.Add(CreateFieldChange(
+                        recordOutsideFilter,
+                        configuration.EntityLogicalName,
+                        column,
+                        ChangeKind.ExitedFilter,
+                        oldValue,
+                        currentValue));
                 }
             }
 
             return changes;
         }
 
+        private RecordSnapshot RetrieveRecordWithoutMonitorFilter(MonitoringConfiguration configuration, Guid recordId)
+        {
+            var columns = configuration.MonitoredColumns
+                .Concat(new[] { configuration.PrimaryIdAttribute, configuration.PrimaryNameAttribute, "modifiedon", "modifiedby" })
+                .Where(column => !string.IsNullOrWhiteSpace(column))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            var query = new QueryExpression(configuration.EntityLogicalName)
+            {
+                ColumnSet = new ColumnSet(columns),
+                TopCount = 1
+            };
+            query.Criteria.AddCondition(configuration.PrimaryIdAttribute, ConditionOperator.Equal, recordId);
+
+            EntityCollection result;
+            lock (serviceLock)
+            {
+                result = configuration.Service.RetrieveMultiple(query);
+            }
+
+            var entity = result.Entities.FirstOrDefault();
+            return entity == null ? null : CreateRecordSnapshot(entity, configuration);
+        }
+
+        private static RecordSnapshot CreateRecordSnapshot(Entity entity, MonitoringConfiguration configuration)
+        {
+            var values = new Dictionary<string, FieldValue>(StringComparer.OrdinalIgnoreCase);
+            foreach (var column in configuration.MonitoredColumns)
+            {
+                var rawValue = entity.Contains(column) ? entity[column] : null;
+                var formattedValue = entity.FormattedValues.Contains(column) ? entity.FormattedValues[column] : null;
+                values[column] = new FieldValue
+                {
+                    NormalizedValue = NormalizeValue(rawValue),
+                    DisplayValue = FormatValue(rawValue, formattedValue)
+                };
+            }
+
+            return new RecordSnapshot
+            {
+                RecordId = entity.Id,
+                RecordName = GetRecordName(entity, configuration.PrimaryNameAttribute),
+                ModifiedOn = entity.Contains("modifiedon") && entity["modifiedon"] is DateTime
+                    ? ((DateTime)entity["modifiedon"]).ToLocalTime()
+                    : DateTime.Now,
+                ModifiedBy = FormatValue(
+                    entity.Contains("modifiedby") ? entity["modifiedby"] : null,
+                    entity.FormattedValues.Contains("modifiedby") ? entity.FormattedValues["modifiedby"] : null),
+                Values = values
+            };
+        }
+
+        private static FieldChange CreateFieldChange(
+            RecordSnapshot record,
+            string entityLogicalName,
+            string column,
+            ChangeKind kind,
+            FieldValue oldValue,
+            FieldValue newValue)
+        {
+            return new FieldChange
+            {
+                RecordId = record.RecordId,
+                RecordName = record.RecordName,
+                EntityLogicalName = entityLogicalName,
+                ModifiedOn = record.ModifiedOn,
+                ModifiedBy = record.ModifiedBy,
+                ColumnLogicalName = column,
+                Kind = kind,
+                OldValue = oldValue == null ? "(vazio)" : oldValue.DisplayValue,
+                NewValue = newValue == null ? "(vazio)" : newValue.DisplayValue
+            };
+        }
+
         private void ReportChanges(ActiveMonitor monitor, List<FieldChange> changes)
         {
             foreach (var change in changes.Take(20))
             {
-                AddLog($"[{monitor.DisplayName}] {change.RecordName} [{change.RecordId}] - {change.ColumnLogicalName}: {change.OldValue} -> {change.NewValue}");
+                AddLog($"[{monitor.DisplayName}] {change.EventDescription}: {change.RecordName} [{change.RecordId}] - {change.ColumnLogicalName}: {change.ChangeDescription}");
+            }
+
+            foreach (var change in changes)
+            {
                 AddRecentChange(monitor, change);
             }
 
@@ -946,6 +1043,7 @@ namespace XrmTool_bravo
                 AddLog($"Mais {changes.Count - 20} alteracao(oes) omitida(s) do log.");
             }
 
+            PersistRecentChanges();
             ShowWindowsAlert(monitor, changes);
         }
 
@@ -963,21 +1061,113 @@ namespace XrmTool_bravo
         {
             change.MonitorName = monitor.DisplayName;
             var item = new ListViewItem(change.ModifiedOn.ToString("dd/MM/yyyy HH:mm:ss"));
+            item.SubItems.Add(change.EventDescription);
             item.SubItems.Add(change.RecordId.ToString("D"));
             item.SubItems.Add(change.ModifiedBy);
             item.SubItems.Add(change.RecordName);
             item.SubItems.Add(change.ColumnLogicalName);
-            item.SubItems.Add($"{change.OldValue} -> {change.NewValue}");
+            item.SubItems.Add(change.ChangeDescription);
             item.SubItems.Add(monitor.DisplayName);
-            item.SubItems[1].ForeColor = Color.FromArgb(0, 102, 204);
+            item.SubItems[2].ForeColor = Color.FromArgb(0, 102, 204);
             item.UseItemStyleForSubItems = false;
             item.Tag = change;
             lvRecentChanges.Items.Insert(0, item);
 
-            while (lvRecentChanges.Items.Count > 500)
+            while (lvRecentChanges.Items.Count > MaximumRecentChanges)
             {
                 lvRecentChanges.Items.RemoveAt(lvRecentChanges.Items.Count - 1);
             }
+
+        }
+
+        private void RestoreRecentChangesIfPossible()
+        {
+            if (recentChangesRestored || mySettings == null || string.IsNullOrWhiteSpace(currentEnvironmentUrl))
+            {
+                return;
+            }
+
+            recentChangesRestored = true;
+            var changes = (mySettings.RecentChanges ?? new List<PersistedFieldChange>())
+                .Where(change => string.Equals(NormalizeEnvironmentUrl(change.EnvironmentUrl), NormalizeEnvironmentUrl(currentEnvironmentUrl), StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(change => change.ModifiedOn)
+                .Take(MaximumRecentChanges)
+                .ToList();
+
+            lvRecentChanges.BeginUpdate();
+            try
+            {
+                foreach (var persisted in changes.OrderBy(change => change.ModifiedOn))
+                {
+                    AddRecentChangeToList(new FieldChange
+                    {
+                        RecordId = persisted.RecordId,
+                        RecordName = persisted.RecordName,
+                        EntityLogicalName = persisted.EntityLogicalName,
+                        MonitorName = persisted.MonitorName,
+                        ModifiedOn = persisted.ModifiedOn,
+                        ModifiedBy = persisted.ModifiedBy,
+                        ColumnLogicalName = persisted.ColumnLogicalName,
+                        Kind = (ChangeKind)persisted.Kind,
+                        OldValue = persisted.OldValue,
+                        NewValue = persisted.NewValue
+                    });
+                }
+            }
+            finally
+            {
+                lvRecentChanges.EndUpdate();
+            }
+
+            PersistRecentChanges();
+        }
+
+        private void AddRecentChangeToList(FieldChange change)
+        {
+            var item = new ListViewItem(change.ModifiedOn.ToString("dd/MM/yyyy HH:mm:ss"));
+            item.SubItems.Add(change.EventDescription);
+            item.SubItems.Add(change.RecordId.ToString("D"));
+            item.SubItems.Add(change.ModifiedBy);
+            item.SubItems.Add(change.RecordName);
+            item.SubItems.Add(change.ColumnLogicalName);
+            item.SubItems.Add(change.ChangeDescription);
+            item.SubItems.Add(change.MonitorName);
+            item.SubItems[2].ForeColor = Color.FromArgb(0, 102, 204);
+            item.UseItemStyleForSubItems = false;
+            item.Tag = change;
+            lvRecentChanges.Items.Insert(0, item);
+        }
+
+        private void PersistRecentChanges()
+        {
+            if (mySettings == null || string.IsNullOrWhiteSpace(currentEnvironmentUrl))
+            {
+                return;
+            }
+
+            var otherEnvironments = (mySettings.RecentChanges ?? new List<PersistedFieldChange>())
+                .Where(change => !string.Equals(NormalizeEnvironmentUrl(change.EnvironmentUrl), NormalizeEnvironmentUrl(currentEnvironmentUrl), StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            otherEnvironments.AddRange(lvRecentChanges.Items.Cast<ListViewItem>()
+                .Take(MaximumRecentChanges)
+                .Select(item => item.Tag as FieldChange)
+                .Where(change => change != null)
+                .Select(change => new PersistedFieldChange
+                {
+                    EnvironmentUrl = currentEnvironmentUrl,
+                    RecordId = change.RecordId,
+                    RecordName = change.RecordName,
+                    EntityLogicalName = change.EntityLogicalName,
+                    MonitorName = change.MonitorName,
+                    ModifiedOn = change.ModifiedOn,
+                    ModifiedBy = change.ModifiedBy,
+                    ColumnLogicalName = change.ColumnLogicalName,
+                    Kind = (int)change.Kind,
+                    OldValue = change.OldValue,
+                    NewValue = change.NewValue
+                }));
+            mySettings.RecentChanges = otherEnvironments;
+            SettingsManager.Instance.Save(GetType(), mySettings);
         }
 
         private void OpenRecordInBrowser(FieldChange change)
@@ -1007,11 +1197,11 @@ namespace XrmTool_bravo
         private static string BuildAlertMessage(List<FieldChange> changes)
         {
             var builder = new StringBuilder();
-            builder.AppendLine($"{changes.Count} alteracao(oes) encontrada(s).");
+            builder.AppendLine($"{changes.Count} evento(s) encontrado(s).");
 
             foreach (var change in changes.Take(4))
             {
-                builder.AppendLine($"{change.ColumnLogicalName}: {TrimForAlert(change.OldValue)} -> {TrimForAlert(change.NewValue)}");
+                builder.AppendLine($"{change.EventDescription} - {change.ColumnLogicalName}: {TrimForAlert(change.ChangeDescription)}");
             }
 
             if (changes.Count > 4)
@@ -1045,8 +1235,44 @@ namespace XrmTool_bravo
                 FilterXml = monitor.Configuration.FilterXml,
                 FetchXml = includeGeneratedFetch ? monitor.Configuration.FetchXml : null,
                 IsPaused = monitor.IsPaused,
-                EnvironmentUrl = includeEnvironment ? currentEnvironmentUrl : null
+                EnvironmentUrl = includeEnvironment ? currentEnvironmentUrl : null,
+                LastSnapshot = ToPersistedSnapshot(monitor.PreviousSnapshot)
             };
+        }
+
+        private static List<PersistedRecordSnapshot> ToPersistedSnapshot(Dictionary<Guid, RecordSnapshot> snapshot)
+        {
+            return (snapshot ?? new Dictionary<Guid, RecordSnapshot>()).Values.Select(record => new PersistedRecordSnapshot
+            {
+                RecordId = record.RecordId,
+                RecordName = record.RecordName,
+                ModifiedOn = record.ModifiedOn,
+                ModifiedBy = record.ModifiedBy,
+                Values = (record.Values ?? new Dictionary<string, FieldValue>()).Select(value => new PersistedFieldValue
+                {
+                    ColumnLogicalName = value.Key,
+                    NormalizedValue = value.Value == null ? null : value.Value.NormalizedValue,
+                    DisplayValue = value.Value == null ? null : value.Value.DisplayValue
+                }).ToList()
+            }).ToList();
+        }
+
+        private static Dictionary<Guid, RecordSnapshot> FromPersistedSnapshot(IEnumerable<PersistedRecordSnapshot> snapshot)
+        {
+            return (snapshot ?? Enumerable.Empty<PersistedRecordSnapshot>()).ToDictionary(record => record.RecordId, record => new RecordSnapshot
+            {
+                RecordId = record.RecordId,
+                RecordName = record.RecordName,
+                ModifiedOn = record.ModifiedOn,
+                ModifiedBy = record.ModifiedBy,
+                Values = (record.Values ?? new List<PersistedFieldValue>())
+                    .Where(value => !string.IsNullOrWhiteSpace(value.ColumnLogicalName))
+                    .ToDictionary(value => value.ColumnLogicalName, value => new FieldValue
+                    {
+                        NormalizedValue = value.NormalizedValue,
+                        DisplayValue = value.DisplayValue
+                    }, StringComparer.OrdinalIgnoreCase)
+            });
         }
 
         private void PersistMonitorConfigurations()
@@ -1081,6 +1307,7 @@ namespace XrmTool_bravo
             }
 
             savedMonitorsRestored = true;
+            RestoreRecentChangesIfPossible();
             var definitions = mySettings.SavedMonitors ?? new List<MonitorDefinition>();
             var matchingDefinitions = definitions.Where(definition =>
                 string.Equals(
@@ -1106,7 +1333,7 @@ namespace XrmTool_bravo
                     IntervalSeconds = Math.Max(1, definition.IntervalSeconds),
                     FilterXml = definition.FilterXml,
                     FetchXml = definition.FetchXml
-                }, "Restaurado", true);
+                }, "Restaurado", true, FromPersistedSnapshot(definition.LastSnapshot));
             }
 
             if (matchingDefinitions.Count > 0)
@@ -1121,18 +1348,19 @@ namespace XrmTool_bravo
             return string.IsNullOrWhiteSpace(url) ? string.Empty : url.Trim().TrimEnd('/');
         }
 
-        private void AddConfiguredMonitor(MonitoringConfiguration configuration, string source, bool isPaused)
+        private void AddConfiguredMonitor(MonitoringConfiguration configuration, string source, bool isPaused,
+            Dictionary<Guid, RecordSnapshot> previousSnapshot = null)
         {
             var monitor = new ActiveMonitor
             {
                 Id = Guid.NewGuid(),
                 Configuration = configuration,
                 CancellationTokenSource = new CancellationTokenSource(),
-                PreviousSnapshot = new Dictionary<Guid, RecordSnapshot>(),
+                PreviousSnapshot = previousSnapshot ?? new Dictionary<Guid, RecordSnapshot>(),
                 CreatedOn = DateTime.Now,
                 Status = isPaused ? "Pausado" : "Iniciando",
                 IsPaused = isPaused,
-                NeedsBaselineReset = isPaused
+                NeedsBaselineReset = false
             };
 
             lock (monitorsLock)
@@ -2287,7 +2515,7 @@ namespace XrmTool_bravo
 
         private void SetStatus(string status)
         {
-            tsslStatus.Text = status;
+            tsslStatus.Text = $"Status: {status}";
         }
 
         private void SaveFilterXmlToBuilder()
@@ -2503,7 +2731,7 @@ namespace XrmTool_bravo
                 monitor.IsPaused = shouldPause;
                 if (!shouldPause)
                 {
-                    monitor.NeedsBaselineReset = true;
+                    monitor.NeedsBaselineReset = false;
                     StartMonitorTask(monitor);
                 }
                 UpdateActiveMonitorStatus(monitor, shouldPause ? "Pausado" : "Retomando");
@@ -2561,6 +2789,7 @@ namespace XrmTool_bravo
         {
             CancelMonitorEditing(false);
             PersistMonitorConfigurations();
+            PersistRecentChanges();
             StopMonitoring(false);
             notifyIcon.Visible = false;
 
@@ -2600,6 +2829,8 @@ namespace XrmTool_bravo
                     : (!string.IsNullOrWhiteSpace(detail.ConnectionName) ? detail.ConnectionName : "Ambiente Dataverse"));
             tslConnection.Text = detail == null ? "Aguardando conexao" : "Conectado";
             savedMonitorsRestored = false;
+            recentChangesRestored = false;
+            lvRecentChanges.Items.Clear();
             RestoreSavedMonitorsIfPossible();
             SetMonitoringControls(false);
         }
@@ -2755,9 +2986,55 @@ namespace XrmTool_bravo
 
             public string ColumnLogicalName { get; set; }
 
+            public ChangeKind Kind { get; set; }
+
             public string OldValue { get; set; }
 
             public string NewValue { get; set; }
+
+            public string EventDescription
+            {
+                get
+                {
+                    switch (Kind)
+                    {
+                        case ChangeKind.EnteredFilter:
+                            return "Entrou no filtro";
+                        case ChangeKind.ExitedFilter:
+                            return "Saiu do filtro";
+                        case ChangeKind.RecordUnavailable:
+                            return "Registro indisponível";
+                        default:
+                            return "Campo alterado";
+                    }
+                }
+            }
+
+            public string ChangeDescription
+            {
+                get
+                {
+                    if (Kind == ChangeKind.EnteredFilter)
+                    {
+                        return $"Valor atual: {NewValue}";
+                    }
+
+                    if (Kind == ChangeKind.RecordUnavailable)
+                    {
+                        return $"{OldValue} -> (registro excluído ou inacessível)";
+                    }
+
+                    return $"{OldValue} -> {NewValue}";
+                }
+            }
+        }
+
+        private enum ChangeKind
+        {
+            ValueChanged,
+            EnteredFilter,
+            ExitedFilter,
+            RecordUnavailable
         }
 
         private sealed class ImportValidationResult
