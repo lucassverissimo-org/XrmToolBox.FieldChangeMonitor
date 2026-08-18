@@ -4,14 +4,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-dotnet build .\XrmTool-bravo.csproj -c $Configuration
+dotnet build .\LucasVerissimo.XrmToolBox.FieldChangeMonitor\LucasVerissimo.XrmToolBox.FieldChangeMonitor.csproj -c $Configuration
 if ($LASTEXITCODE -ne 0) {
     throw "A compilacao falhou. O pacote nao sera criado."
 }
 
 $nuget = Get-Command nuget -ErrorAction SilentlyContinue
 if ($nuget) {
-    & $nuget.Source pack .\LucasVerissimo.XrmToolBox.FieldChangeMonitor.nuspec -Properties Configuration=$Configuration -OutputDirectory .\bin\$Configuration
+    & $nuget.Source pack .\LucasVerissimo.XrmToolBox.FieldChangeMonitor\LucasVerissimo.XrmToolBox.FieldChangeMonitor.nuspec -Properties Configuration=$Configuration -OutputDirectory .\bin\$Configuration
     exit $LASTEXITCODE
 }
 
@@ -21,5 +21,5 @@ if (-not (Test-Path $localNuget)) {
     Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile $localNuget
 }
 
-& $localNuget pack .\LucasVerissimo.XrmToolBox.FieldChangeMonitor.nuspec -Properties Configuration=$Configuration -OutputDirectory .\bin\$Configuration
+& $localNuget pack .\LucasVerissimo.XrmToolBox.FieldChangeMonitor\LucasVerissimo.XrmToolBox.FieldChangeMonitor.nuspec -Properties Configuration=$Configuration -OutputDirectory .\bin\$Configuration
 exit $LASTEXITCODE

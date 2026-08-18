@@ -19,8 +19,9 @@ Set-StrictMode -Version Latest
 
 $projectRoot = $PSScriptRoot
 $packageId = "LucasVerissimo.XrmToolBox.FieldChangeMonitor"
-$assemblyInfoPath = Join-Path $projectRoot "Properties\AssemblyInfo.cs"
-$nuspecPath = Join-Path $projectRoot "$packageId.nuspec"
+$toolProjectDirectory = Join-Path $projectRoot $packageId
+$assemblyInfoPath = Join-Path $toolProjectDirectory "Properties\AssemblyInfo.cs"
+$nuspecPath = Join-Path $toolProjectDirectory "$packageId.nuspec"
 $buildScriptPath = Join-Path $projectRoot "build-package.ps1"
 $releaseDirectory = Join-Path $projectRoot "bin\Release"
 $nugetSource = "https://api.nuget.org/v3/index.json"
@@ -150,8 +151,9 @@ $archive = [System.IO.Compression.ZipFile]::OpenRead($packagePath)
 try {
     $nuspecEntry = $archive.GetEntry("$packageId.nuspec")
     $dllEntry = $archive.GetEntry("lib/net48/Plugins/$packageId.dll")
-    if ($null -eq $nuspecEntry -or $null -eq $dllEntry) {
-        throw "O pacote nao contem o nuspec ou a DLL na pasta lib/net48/Plugins."
+    $sharedDllEntry = $archive.GetEntry("lib/net48/Plugins/LucasVerissimo.XrmToolBox.Shared.dll")
+    if ($null -eq $nuspecEntry -or $null -eq $dllEntry -or $null -eq $sharedDllEntry) {
+        throw "O pacote nao contem o nuspec, a DLL do plugin ou a DLL Shared na pasta lib/net48/Plugins."
     }
 
     $reader = [System.IO.StreamReader]::new($nuspecEntry.Open())
