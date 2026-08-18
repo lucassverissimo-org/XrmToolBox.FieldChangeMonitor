@@ -28,6 +28,7 @@ namespace XrmTool_bravo
         private string currentEntityLogicalName;
         private readonly List<AttributeListItem> allColumnItems = new List<AttributeListItem>();
         private readonly List<AttributeListItem> allConditionAttributeItems = new List<AttributeListItem>();
+        private readonly List<EntityListItem> allEntityItems = new List<EntityListItem>();
         private readonly HashSet<string> checkedMonitoredColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly List<ActiveMonitor> activeMonitors = new List<ActiveMonitor>();
         private readonly List<FilterCondition> filterConditions = new List<FilterCondition>();
@@ -38,7 +39,7 @@ namespace XrmTool_bravo
         private string currentEnvironmentUrl;
         private bool savedMonitorsRestored;
         private bool recentChangesRestored;
-        private const int MaximumRecentChanges = 100;
+        private const int DefaultMaximumRecentChanges = 100;
         private ActiveMonitor editingMonitor;
         private bool editingMonitorWasPaused;
 
@@ -50,6 +51,7 @@ namespace XrmTool_bravo
             SetMonitoringControls(false);
             UpdateConfigurationSummary();
             ResizeConfigurationSummary();
+            InitializeModernInterface();
         }
 
         private void MyPluginControl_Load(object sender, EventArgs e)
@@ -64,7 +66,30 @@ namespace XrmTool_bravo
                 LogInfo("Settings found and loaded");
             }
 
-            RestoreSavedMonitorsIfPossible();
+            chkWindowsPopups.Checked = mySettings.EnableWindowsPopups;
+
+            if (mySettings.RestoreMonitorsOnStartup)
+            {
+                RestoreSavedMonitorsIfPossible();
+            }
+
+            ApplyModernSettings();
+        }
+
+        private void chkWindowsPopups_CheckedChanged(object sender, EventArgs e)
+        {
+            notifyIcon.Visible = false;
+
+            if (mySettings == null)
+            {
+                return;
+            }
+
+            mySettings.EnableWindowsPopups = chkWindowsPopups.Checked;
+            SettingsManager.Instance.Save(GetType(), mySettings);
+            SetStatus(chkWindowsPopups.Checked
+                ? "Popups do Windows ativados."
+                : "Popups do Windows desativados.");
         }
 
         private void tsbClose_Click(object sender, EventArgs e)
@@ -75,6 +100,11 @@ namespace XrmTool_bravo
         private void btnLoadColumns_Click(object sender, EventArgs e)
         {
             ExecuteMethod(LoadColumns);
+        }
+
+        private void btnSearchEntities_Click(object sender, EventArgs e)
+        {
+            ExecuteMethod(LoadEntities);
         }
 
         private void btnStart_Click(object sender, EventArgs e)
@@ -298,7 +328,7 @@ namespace XrmTool_bravo
 
         private void LoadColumns()
         {
-            var entityLogicalName = txtEntityLogicalName.Text.Trim();
+            var entityLogicalName = GetSelectedEntityLogicalName();
 
             if (string.IsNullOrWhiteSpace(entityLogicalName))
             {
@@ -323,6 +353,7 @@ namespace XrmTool_bravo
                 {
                     if (args.Error != null)
                     {
+                        modernColumnsLoadedCallback = null;
                         MessageBox.Show(args.Error.Message, "Erro ao carregar colunas", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         SetStatus("Falha ao carregar colunas.");
                         return;
@@ -331,6 +362,7 @@ namespace XrmTool_bravo
                     var response = args.Result as RetrieveEntityResponse;
                     if (response == null || response.EntityMetadata == null)
                     {
+                        modernColumnsLoadedCallback = null;
                         MessageBox.Show("Nao foi possivel ler os metadados da entidade.", "Metadados indisponiveis", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
@@ -351,6 +383,9 @@ namespace XrmTool_bravo
                     AddLog($"Colunas carregadas para {entityLogicalName}.");
                     SetStatus($"{clbColumns.Items.Count} colunas disponiveis para {entityLogicalName}.");
                     UpdateConfigurationSummary();
+                    var callback = modernColumnsLoadedCallback;
+                    modernColumnsLoadedCallback = null;
+                    callback?.Invoke();
                 }
             });
         }
@@ -390,12 +425,6 @@ namespace XrmTool_bravo
 
         private void BeginEditingSelectedMonitor()
         {
-            if (editingMonitor != null)
-            {
-                MessageBox.Show("Conclua ou cancele a edicao atual.", "Edicao em andamento", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
             if (lvActiveMonitors.SelectedItems.Count != 1)
             {
                 MessageBox.Show("Selecione exatamente um monitoramento para editar.", "Selecao obrigatoria", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -405,6 +434,22 @@ namespace XrmTool_bravo
             var monitor = lvActiveMonitors.SelectedItems[0].Tag as ActiveMonitor;
             if (monitor == null)
             {
+                return;
+            }
+
+            BeginEditingMonitor(monitor);
+        }
+
+        private void BeginEditingMonitor(ActiveMonitor monitor)
+        {
+            if (monitor == null)
+            {
+                return;
+            }
+
+            if (editingMonitor != null)
+            {
+                MessageBox.Show("Conclua ou cancele a edicao atual.", "Edicao em andamento", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -459,6 +504,73 @@ namespace XrmTool_bravo
                     SetStatus($"Editando {monitor.DisplayName}.");
                 }
             });
+        }
+
+        private void LoadEntities()
+        {
+            if (Service == null)
+            {
+                MessageBox.Show("Conecte-se a um ambiente antes de buscar entidades.", "Conexao obrigatoria", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var currentLogicalName = (txtEntityLogicalName.SelectedItem as EntityListItem)?.LogicalName
+                ?? txtEntityLogicalName.Text.Trim();
+
+            WorkAsync(new WorkAsyncInfo
+            {
+                Message = "Carregando entidades do Dataverse",
+                Work = (worker, args) =>
+                {
+                    args.Result = (RetrieveAllEntitiesResponse)Service.Execute(new RetrieveAllEntitiesRequest
+                    {
+                        EntityFilters = EntityFilters.Entity,
+                        RetrieveAsIfPublished = true
+                    });
+                },
+                PostWorkCallBack = args =>
+                {
+                    if (args.Error != null)
+                    {
+                        MessageBox.Show(args.Error.Message, "Erro ao buscar entidades", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        SetStatus("Falha ao buscar entidades.");
+                        return;
+                    }
+
+                    var response = args.Result as RetrieveAllEntitiesResponse;
+                    allEntityItems.Clear();
+                    allEntityItems.AddRange((response?.EntityMetadata ?? new EntityMetadata[0])
+                        .Where(metadata => !string.IsNullOrWhiteSpace(metadata.LogicalName))
+                        .Select(metadata => new EntityListItem(metadata))
+                        .OrderBy(item => item.DisplayName)
+                        .ThenBy(item => item.LogicalName));
+
+                    txtEntityLogicalName.BeginUpdate();
+                    txtEntityLogicalName.Items.Clear();
+                    txtEntityLogicalName.Items.AddRange(allEntityItems.Cast<object>().ToArray());
+                    txtEntityLogicalName.EndUpdate();
+
+                    var selectedIndex = allEntityItems.FindIndex(item =>
+                        string.Equals(item.LogicalName, currentLogicalName, StringComparison.OrdinalIgnoreCase));
+                    if (selectedIndex >= 0)
+                    {
+                        txtEntityLogicalName.SelectedIndex = selectedIndex;
+                    }
+                    else
+                    {
+                        txtEntityLogicalName.Text = currentLogicalName;
+                    }
+
+                    txtEntityLogicalName.DroppedDown = true;
+                    SetStatus($"{allEntityItems.Count} entidades disponiveis para pesquisa.");
+                }
+            });
+        }
+
+        private string GetSelectedEntityLogicalName()
+        {
+            var selectedEntity = txtEntityLogicalName.SelectedItem as EntityListItem;
+            return selectedEntity == null ? txtEntityLogicalName.Text.Trim() : selectedEntity.LogicalName;
         }
 
         private void LoadFilterForEditing(string filterXml)
@@ -542,6 +654,8 @@ namespace XrmTool_bravo
             monitor.CancellationTokenSource = new CancellationTokenSource();
             monitor.Task = null;
             monitor.PreviousSnapshot = new Dictionary<Guid, RecordSnapshot>();
+            monitor.MonitoredRecordCount = 0;
+            monitor.LastQueryOn = null;
             monitor.IsPaused = editingMonitorWasPaused;
             monitor.NeedsBaselineReset = true;
             RefreshActiveMonitorListItem(monitor);
@@ -675,7 +789,7 @@ namespace XrmTool_bravo
                 }
             }
 
-            var entityLogicalName = txtEntityLogicalName.Text.Trim();
+            var entityLogicalName = GetSelectedEntityLogicalName();
             if (string.IsNullOrWhiteSpace(entityLogicalName))
             {
                 MessageBox.Show("Informe o nome logico da entidade.", "Entidade obrigatoria", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -756,6 +870,9 @@ namespace XrmTool_bravo
                         break;
                     }
 
+                    monitor.MonitoredRecordCount = currentSnapshot.Count;
+                    monitor.LastQueryOn = DateTime.Now;
+
                     if (isFirstRun && monitor.PreviousSnapshot.Count == 0)
                     {
                         monitor.PreviousSnapshot = currentSnapshot;
@@ -766,6 +883,7 @@ namespace XrmTool_bravo
                             UpdateActiveMonitorStatus(monitor, $"Ativo ({currentSnapshot.Count})");
                             AddLog($"[{monitor.DisplayName}] Snapshot inicial registrado com {currentSnapshot.Count} registro(s).");
                             SetStatus($"Monitorando {currentSnapshot.Count} registro(s).");
+                            RefreshModernMonitorGrid();
                         });
                     }
                     else
@@ -788,6 +906,8 @@ namespace XrmTool_bravo
                                 UpdateActiveMonitorStatus(monitor, $"Ativo ({currentSnapshot.Count})");
                                 SetStatus($"Sem alteracoes. Ultima consulta: {DateTime.Now:HH:mm:ss}");
                             }
+
+                            RefreshModernMonitorGrid();
                         });
                     }
                 }
@@ -976,7 +1096,7 @@ namespace XrmTool_bravo
             return entity == null ? null : CreateRecordSnapshot(entity, configuration);
         }
 
-        private static RecordSnapshot CreateRecordSnapshot(Entity entity, MonitoringConfiguration configuration)
+        private RecordSnapshot CreateRecordSnapshot(Entity entity, MonitoringConfiguration configuration)
         {
             var values = new Dictionary<string, FieldValue>(StringComparer.OrdinalIgnoreCase);
             foreach (var column in configuration.MonitoredColumns)
@@ -997,11 +1117,80 @@ namespace XrmTool_bravo
                 ModifiedOn = entity.Contains("modifiedon") && entity["modifiedon"] is DateTime
                     ? ((DateTime)entity["modifiedon"]).ToLocalTime()
                     : DateTime.Now,
-                ModifiedBy = FormatValue(
-                    entity.Contains("modifiedby") ? entity["modifiedby"] : null,
-                    entity.FormattedValues.Contains("modifiedby") ? entity.FormattedValues["modifiedby"] : null),
+                ModifiedBy = ResolveModifiedBy(entity, configuration),
                 Values = values
             };
+        }
+
+        private string ResolveModifiedBy(Entity entity, MonitoringConfiguration configuration)
+        {
+            var formattedValue = entity.FormattedValues.Contains("modifiedby")
+                ? entity.FormattedValues["modifiedby"]
+                : null;
+            var reference = entity.Contains("modifiedby") ? entity["modifiedby"] as EntityReference : null;
+
+            if (!string.IsNullOrWhiteSpace(formattedValue))
+            {
+                if (reference != null)
+                {
+                    lock (configuration.ModifiedByNamesLock)
+                    {
+                        configuration.ModifiedByNames[reference.Id] = formattedValue;
+                    }
+                }
+
+                return formattedValue;
+            }
+
+            if (reference == null)
+            {
+                return FormatValue(entity.Contains("modifiedby") ? entity["modifiedby"] : null, null);
+            }
+
+            if (!string.IsNullOrWhiteSpace(reference.Name))
+            {
+                lock (configuration.ModifiedByNamesLock)
+                {
+                    configuration.ModifiedByNames[reference.Id] = reference.Name;
+                }
+
+                return reference.Name;
+            }
+
+            lock (configuration.ModifiedByNamesLock)
+            {
+                string cachedName;
+                if (configuration.ModifiedByNames.TryGetValue(reference.Id, out cachedName))
+                {
+                    return cachedName;
+                }
+            }
+
+            try
+            {
+                Entity user;
+                lock (serviceLock)
+                {
+                    user = configuration.Service.Retrieve("systemuser", reference.Id, new ColumnSet("fullname"));
+                }
+
+                var fullName = user.GetAttributeValue<string>("fullname");
+                if (!string.IsNullOrWhiteSpace(fullName))
+                {
+                    lock (configuration.ModifiedByNamesLock)
+                    {
+                        configuration.ModifiedByNames[reference.Id] = fullName;
+                    }
+
+                    return fullName;
+                }
+            }
+            catch
+            {
+                // Keep monitoring even if the user cannot be read (for example, due to permissions).
+            }
+
+            return reference.Id.ToString("D");
         }
 
         private static FieldChange CreateFieldChange(
@@ -1049,6 +1238,11 @@ namespace XrmTool_bravo
 
         private void ShowWindowsAlert(ActiveMonitor monitor, List<FieldChange> changes)
         {
+            if (!chkWindowsPopups.Checked)
+            {
+                return;
+            }
+
             notifyIcon.Visible = true;
             notifyIcon.BalloonTipTitle = $"{currentEnvironmentName} - {monitor.DisplayName}";
             notifyIcon.BalloonTipText = BuildAlertMessage(changes);
@@ -1073,11 +1267,12 @@ namespace XrmTool_bravo
             item.Tag = change;
             lvRecentChanges.Items.Insert(0, item);
 
-            while (lvRecentChanges.Items.Count > MaximumRecentChanges)
+            while (lvRecentChanges.Items.Count > GetMaximumRecentChanges())
             {
                 lvRecentChanges.Items.RemoveAt(lvRecentChanges.Items.Count - 1);
             }
 
+            RefreshModernRecentGrid();
         }
 
         private void RestoreRecentChangesIfPossible()
@@ -1091,7 +1286,7 @@ namespace XrmTool_bravo
             var changes = (mySettings.RecentChanges ?? new List<PersistedFieldChange>())
                 .Where(change => string.Equals(NormalizeEnvironmentUrl(change.EnvironmentUrl), NormalizeEnvironmentUrl(currentEnvironmentUrl), StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(change => change.ModifiedOn)
-                .Take(MaximumRecentChanges)
+                .Take(GetMaximumRecentChanges())
                 .ToList();
 
             lvRecentChanges.BeginUpdate();
@@ -1149,7 +1344,7 @@ namespace XrmTool_bravo
                 .Where(change => !string.Equals(NormalizeEnvironmentUrl(change.EnvironmentUrl), NormalizeEnvironmentUrl(currentEnvironmentUrl), StringComparison.OrdinalIgnoreCase))
                 .ToList();
             otherEnvironments.AddRange(lvRecentChanges.Items.Cast<ListViewItem>()
-                .Take(MaximumRecentChanges)
+                .Take(GetMaximumRecentChanges())
                 .Select(item => item.Tag as FieldChange)
                 .Where(change => change != null)
                 .Select(change => new PersistedFieldChange
@@ -1178,14 +1373,17 @@ namespace XrmTool_bravo
                 return;
             }
 
-            var confirmation = MessageBox.Show(
-                $"Deseja abrir o registro {change.RecordId:D} no navegador padrao?",
-                "Abrir registro do Dataverse",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
-            if (confirmation != DialogResult.Yes)
+            if (mySettings == null || mySettings.ConfirmBeforeOpeningRecord)
             {
-                return;
+                var confirmation = MessageBox.Show(
+                    $"Deseja abrir o registro {change.RecordId:D} no navegador padrao?",
+                    "Abrir registro do Dataverse",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+                if (confirmation != DialogResult.Yes)
+                {
+                    return;
+                }
             }
 
             var baseUrl = currentEnvironmentUrl.TrimEnd('/');
@@ -1222,7 +1420,7 @@ namespace XrmTool_bravo
             return value.Length <= 40 ? value : value.Substring(0, 37) + "...";
         }
 
-        private MonitorDefinition ToDefinition(ActiveMonitor monitor, bool includeEnvironment, bool includeGeneratedFetch)
+        private MonitorDefinition ToDefinition(ActiveMonitor monitor, bool includeEnvironment, bool includeGeneratedFetch, bool includeSnapshot)
         {
             return new MonitorDefinition
             {
@@ -1236,7 +1434,7 @@ namespace XrmTool_bravo
                 FetchXml = includeGeneratedFetch ? monitor.Configuration.FetchXml : null,
                 IsPaused = monitor.IsPaused,
                 EnvironmentUrl = includeEnvironment ? currentEnvironmentUrl : null,
-                LastSnapshot = ToPersistedSnapshot(monitor.PreviousSnapshot)
+                LastSnapshot = includeSnapshot ? ToPersistedSnapshot(monitor.PreviousSnapshot) : null
             };
         }
 
@@ -1291,7 +1489,7 @@ namespace XrmTool_bravo
                         StringComparison.OrdinalIgnoreCase))
                     .ToList();
                 otherEnvironmentMonitors.AddRange(activeMonitors
-                    .Select(monitor => ToDefinition(monitor, true, true))
+                    .Select(monitor => ToDefinition(monitor, true, true, true))
                     .ToList());
                 mySettings.SavedMonitors = otherEnvironmentMonitors;
             }
@@ -1357,6 +1555,7 @@ namespace XrmTool_bravo
                 Configuration = configuration,
                 CancellationTokenSource = new CancellationTokenSource(),
                 PreviousSnapshot = previousSnapshot ?? new Dictionary<Guid, RecordSnapshot>(),
+                MonitoredRecordCount = previousSnapshot == null ? 0 : previousSnapshot.Count,
                 CreatedOn = DateTime.Now,
                 Status = isPaused ? "Pausado" : "Iniciando",
                 IsPaused = isPaused,
@@ -1406,11 +1605,26 @@ namespace XrmTool_bravo
                 .Select(item => item.Tag as ActiveMonitor)
                 .Where(monitor => monitor != null)
                 .ToList();
+            ExportMonitors(selectedMonitors);
+        }
+
+        private void ExportMonitors(IEnumerable<ActiveMonitor> monitors)
+        {
+            var selectedMonitors = (monitors ?? Enumerable.Empty<ActiveMonitor>())
+                .Where(monitor => monitor != null)
+                .Distinct()
+                .ToList();
+            if (selectedMonitors.Count == 0)
+            {
+                MessageBox.Show("Selecione ao menos um monitoramento para exportar.", "Nenhum monitoramento selecionado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
             var package = new MonitorExportPackage
             {
                 SchemaVersion = 1,
                 ExportedAtUtc = DateTime.UtcNow,
-                Monitors = selectedMonitors.Select(monitor => ToDefinition(monitor, false, false)).ToList()
+                Monitors = selectedMonitors.Select(monitor => ToDefinition(monitor, false, false, false)).ToList()
             };
 
             using (var dialog = new SaveFileDialog
@@ -1628,6 +1842,28 @@ namespace XrmTool_bravo
                 .Select(item => item.Tag as ActiveMonitor)
                 .Where(monitor => monitor != null)
                 .ToList();
+
+            RemoveMonitors(monitorsToStop);
+        }
+
+        private void RemoveMonitors(IEnumerable<ActiveMonitor> monitors)
+        {
+            var monitorsToStop = (monitors ?? Enumerable.Empty<ActiveMonitor>())
+                .Where(monitor => monitor != null)
+                .Distinct()
+                .ToList();
+            if (monitorsToStop.Count == 0)
+            {
+                return;
+            }
+
+            var message = monitorsToStop.Count == 1
+                ? $"Deseja remover o monitoramento '{monitorsToStop[0].DisplayName}'?"
+                : $"Deseja remover os {monitorsToStop.Count} monitoramentos selecionados?";
+            if (MessageBox.Show(message, "Remover monitoramento", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+            {
+                return;
+            }
 
             foreach (var monitor in monitorsToStop)
             {
@@ -2352,6 +2588,20 @@ namespace XrmTool_bravo
             return string.IsNullOrWhiteSpace(label) ? attribute.LogicalName : label;
         }
 
+        private static string GetEntityDisplayName(EntityMetadata entity)
+        {
+            var label = entity.DisplayName != null && entity.DisplayName.UserLocalizedLabel != null
+                ? entity.DisplayName.UserLocalizedLabel.Label
+                : null;
+
+            if (string.IsNullOrWhiteSpace(label) && entity.DisplayName != null && entity.DisplayName.LocalizedLabels.Count > 0)
+            {
+                label = entity.DisplayName.LocalizedLabels[0].Label;
+            }
+
+            return string.IsNullOrWhiteSpace(label) ? entity.LogicalName : label;
+        }
+
         private static string GetRecordName(Entity entity, string primaryNameAttribute)
         {
             if (!string.IsNullOrWhiteSpace(primaryNameAttribute) && entity.Contains(primaryNameAttribute))
@@ -2655,9 +2905,10 @@ namespace XrmTool_bravo
                 return;
             }
 
-            var entityName = string.IsNullOrWhiteSpace(txtEntityLogicalName.Text)
+            var selectedEntityLogicalName = GetSelectedEntityLogicalName();
+            var entityName = string.IsNullOrWhiteSpace(selectedEntityLogicalName)
                 ? "Selecione uma tabela"
-                : txtEntityLogicalName.Text.Trim();
+                : selectedEntityLogicalName;
             var monitorName = string.IsNullOrWhiteSpace(txtMonitorName.Text)
                 ? "Monitor sem nome"
                 : txtMonitorName.Text.Trim();
@@ -2669,7 +2920,7 @@ namespace XrmTool_bravo
                 $"{monitorName}  •  {entityName}  •  {selectedCount} campo(s)  •  a cada {nudIntervalSeconds.Value:0} segundo(s)  •  {conditionCount} condição(ões)";
             lblConfigurationReady.Text = editingMonitor != null
                 ? $"Editando: {editingMonitor.DisplayName}"
-                : (selectedCount > 0 && !string.IsNullOrWhiteSpace(txtEntityLogicalName.Text) && !string.IsNullOrWhiteSpace(txtMonitorName.Text)
+                : (selectedCount > 0 && !string.IsNullOrWhiteSpace(selectedEntityLogicalName) && !string.IsNullOrWhiteSpace(txtMonitorName.Text)
                     ? "Pronto para monitorar"
                     : "Configure o monitoramento");
         }
@@ -2756,6 +3007,7 @@ namespace XrmTool_bravo
             tslActiveMonitors.Text = $"Ativos: {activeCount}  |  Pausados: {pausedCount}";
             txtEntityLogicalName.Enabled = true;
             txtMonitorName.Enabled = true;
+            btnSearchEntities.Enabled = Service != null;
             btnLoadColumns.Enabled = true;
             txtColumnSearch.Enabled = true;
             clbColumns.Enabled = true;
@@ -2783,6 +3035,8 @@ namespace XrmTool_bravo
             btnImportMonitors.Enabled = Service != null && editingMonitor == null;
             btnEditMonitor.Enabled = hasActiveMonitors && editingMonitor == null;
             lvActiveMonitors.Enabled = editingMonitor == null;
+            RefreshModernMonitorGrid();
+            RefreshModernRecentGrid();
         }
 
         private void MyPluginControl_OnCloseTool(object sender, EventArgs e)
@@ -2831,7 +3085,10 @@ namespace XrmTool_bravo
             savedMonitorsRestored = false;
             recentChangesRestored = false;
             lvRecentChanges.Items.Clear();
-            RestoreSavedMonitorsIfPossible();
+            if (mySettings == null || mySettings.RestoreMonitorsOnStartup)
+            {
+                RestoreSavedMonitorsIfPossible();
+            }
             SetMonitoringControls(false);
         }
 
@@ -2910,6 +3167,10 @@ namespace XrmTool_bravo
 
             public Dictionary<Guid, RecordSnapshot> PreviousSnapshot { get; set; }
 
+            public int MonitoredRecordCount { get; set; }
+
+            public DateTime? LastQueryOn { get; set; }
+
             public DateTime CreatedOn { get; set; }
 
             public string Status { get; set; }
@@ -2931,6 +3192,12 @@ namespace XrmTool_bravo
 
         private sealed class MonitoringConfiguration
         {
+            public MonitoringConfiguration()
+            {
+                ModifiedByNames = new Dictionary<Guid, string>();
+                ModifiedByNamesLock = new object();
+            }
+
             public string MonitorName { get; set; }
 
             public IOrganizationService Service { get; set; }
@@ -2948,6 +3215,30 @@ namespace XrmTool_bravo
             public string FilterXml { get; set; }
 
             public string FetchXml { get; set; }
+
+            public Dictionary<Guid, string> ModifiedByNames { get; private set; }
+
+            public object ModifiedByNamesLock { get; private set; }
+        }
+
+        private sealed class EntityListItem
+        {
+            public EntityListItem(EntityMetadata metadata)
+            {
+                LogicalName = metadata.LogicalName;
+                DisplayName = GetEntityDisplayName(metadata);
+            }
+
+            public string LogicalName { get; private set; }
+
+            public string DisplayName { get; private set; }
+
+            public override string ToString()
+            {
+                return string.Equals(DisplayName, LogicalName, StringComparison.OrdinalIgnoreCase)
+                    ? LogicalName
+                    : $"{DisplayName} ({LogicalName})";
+            }
         }
 
         private sealed class RecordSnapshot

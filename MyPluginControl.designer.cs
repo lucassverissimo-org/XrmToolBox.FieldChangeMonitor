@@ -31,7 +31,8 @@ namespace XrmTool_bravo
             this.configurationGroup = new System.Windows.Forms.GroupBox();
             this.configurationLayout = new System.Windows.Forms.TableLayoutPanel();
             this.lblEntity = new System.Windows.Forms.Label();
-            this.txtEntityLogicalName = new System.Windows.Forms.TextBox();
+            this.txtEntityLogicalName = new System.Windows.Forms.ComboBox();
+            this.btnSearchEntities = new System.Windows.Forms.Button();
             this.btnLoadColumns = new System.Windows.Forms.Button();
             this.lblInterval = new System.Windows.Forms.Label();
             this.nudIntervalSeconds = new System.Windows.Forms.NumericUpDown();
@@ -85,6 +86,7 @@ namespace XrmTool_bravo
             this.activeMonitorsGroup = new System.Windows.Forms.GroupBox();
             this.activeMonitorsLayout = new System.Windows.Forms.TableLayoutPanel();
             this.activeMonitorButtonPanel = new System.Windows.Forms.FlowLayoutPanel();
+            this.chkWindowsPopups = new System.Windows.Forms.CheckBox();
             this.btnStopSelectedMonitor = new System.Windows.Forms.Button();
             this.btnRemoveSelectedMonitors = new System.Windows.Forms.Button();
             this.btnPauseSelectedMonitors = new System.Windows.Forms.Button();
@@ -205,7 +207,6 @@ namespace XrmTool_bravo
             this.tslActiveMonitors.Name = "tslActiveMonitors";
             this.tslActiveMonitors.Size = new System.Drawing.Size(142, 39);
             this.tslActiveMonitors.Text = "Monitoramentos ativos: 0";
-            // 
             // tsbClose
             // 
             this.tsbClose.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
@@ -268,16 +269,18 @@ namespace XrmTool_bravo
             // 
             // configurationLayout
             // 
-            this.configurationLayout.ColumnCount = 2;
+            this.configurationLayout.ColumnCount = 3;
             this.configurationLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.configurationLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 105F));
             this.configurationLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 101F));
             this.configurationLayout.Controls.Add(this.lblEntity, 0, 0);
             this.configurationLayout.Controls.Add(this.txtEntityLogicalName, 0, 1);
-            this.configurationLayout.Controls.Add(this.btnLoadColumns, 1, 1);
+            this.configurationLayout.Controls.Add(this.btnSearchEntities, 1, 1);
+            this.configurationLayout.Controls.Add(this.btnLoadColumns, 2, 1);
             this.configurationLayout.Controls.Add(this.lblInterval, 0, 2);
             this.configurationLayout.Controls.Add(this.nudIntervalSeconds, 0, 3);
             this.configurationLayout.Controls.Add(this.columnsGroup, 0, 4);
-            this.configurationLayout.SetColumnSpan(this.columnsGroup, 2);
+            this.configurationLayout.SetColumnSpan(this.columnsGroup, 3);
             this.configurationLayout.Dock = System.Windows.Forms.DockStyle.Fill;
             this.configurationLayout.Location = new System.Drawing.Point(9, 23);
             this.configurationLayout.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
@@ -295,7 +298,7 @@ namespace XrmTool_bravo
             // 
             this.lblEntity.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblEntity.AutoSize = true;
-            this.configurationLayout.SetColumnSpan(this.lblEntity, 2);
+            this.configurationLayout.SetColumnSpan(this.lblEntity, 3);
             this.lblEntity.Location = new System.Drawing.Point(2, 5);
             this.lblEntity.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.lblEntity.Name = "lblEntity";
@@ -305,14 +308,27 @@ namespace XrmTool_bravo
             // 
             // txtEntityLogicalName
             // 
-            this.txtEntityLogicalName.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.txtEntityLogicalName.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
+            this.txtEntityLogicalName.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
             this.txtEntityLogicalName.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.txtEntityLogicalName.FormattingEnabled = true;
             this.txtEntityLogicalName.Location = new System.Drawing.Point(2, 31);
             this.txtEntityLogicalName.Margin = new System.Windows.Forms.Padding(2, 7, 4, 7);
             this.txtEntityLogicalName.Name = "txtEntityLogicalName";
-            this.txtEntityLogicalName.Size = new System.Drawing.Size(86, 20);
+            this.txtEntityLogicalName.Size = new System.Drawing.Size(1, 21);
             this.txtEntityLogicalName.TabIndex = 1;
             this.txtEntityLogicalName.TextChanged += new System.EventHandler(this.ConfigurationValueChanged);
+            //
+            // btnSearchEntities
+            //
+            this.btnSearchEntities.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.btnSearchEntities.Margin = new System.Windows.Forms.Padding(2, 5, 2, 5);
+            this.btnSearchEntities.Name = "btnSearchEntities";
+            this.btnSearchEntities.Size = new System.Drawing.Size(101, 29);
+            this.btnSearchEntities.TabIndex = 2;
+            this.btnSearchEntities.Text = "Buscar entidades";
+            this.btnSearchEntities.UseVisualStyleBackColor = true;
+            this.btnSearchEntities.Click += new System.EventHandler(this.btnSearchEntities_Click);
             // 
             // btnLoadColumns
             // 
@@ -321,7 +337,7 @@ namespace XrmTool_bravo
             this.btnLoadColumns.Margin = new System.Windows.Forms.Padding(2, 5, 2, 5);
             this.btnLoadColumns.Name = "btnLoadColumns";
             this.btnLoadColumns.Size = new System.Drawing.Size(97, 29);
-            this.btnLoadColumns.TabIndex = 2;
+            this.btnLoadColumns.TabIndex = 3;
             this.btnLoadColumns.Text = "Carregar colunas";
             this.btnLoadColumns.UseVisualStyleBackColor = true;
             this.btnLoadColumns.Click += new System.EventHandler(this.btnLoadColumns_Click);
@@ -330,7 +346,7 @@ namespace XrmTool_bravo
             // 
             this.lblInterval.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblInterval.AutoSize = true;
-            this.configurationLayout.SetColumnSpan(this.lblInterval, 2);
+            this.configurationLayout.SetColumnSpan(this.lblInterval, 3);
             this.lblInterval.Location = new System.Drawing.Point(2, 70);
             this.lblInterval.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.lblInterval.Name = "lblInterval";
@@ -963,13 +979,15 @@ namespace XrmTool_bravo
             // 
             this.activeMonitorsLayout.ColumnCount = 1;
             this.activeMonitorsLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.activeMonitorsLayout.Controls.Add(this.activeMonitorButtonPanel, 0, 0);
-            this.activeMonitorsLayout.Controls.Add(this.lvActiveMonitors, 0, 1);
+            this.activeMonitorsLayout.Controls.Add(this.chkWindowsPopups, 0, 0);
+            this.activeMonitorsLayout.Controls.Add(this.activeMonitorButtonPanel, 0, 1);
+            this.activeMonitorsLayout.Controls.Add(this.lvActiveMonitors, 0, 2);
             this.activeMonitorsLayout.Dock = System.Windows.Forms.DockStyle.Fill;
             this.activeMonitorsLayout.Location = new System.Drawing.Point(8, 21);
             this.activeMonitorsLayout.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.activeMonitorsLayout.Name = "activeMonitorsLayout";
-            this.activeMonitorsLayout.RowCount = 2;
+            this.activeMonitorsLayout.RowCount = 3;
+            this.activeMonitorsLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 28F));
             this.activeMonitorsLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 62F));
             this.activeMonitorsLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.activeMonitorsLayout.Size = new System.Drawing.Size(342, 161);
@@ -989,6 +1007,20 @@ namespace XrmTool_bravo
             this.activeMonitorButtonPanel.Name = "activeMonitorButtonPanel";
             this.activeMonitorButtonPanel.Size = new System.Drawing.Size(342, 31);
             this.activeMonitorButtonPanel.TabIndex = 0;
+            //
+            // chkWindowsPopups
+            //
+            this.chkWindowsPopups.AutoSize = true;
+            this.chkWindowsPopups.Checked = true;
+            this.chkWindowsPopups.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkWindowsPopups.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.chkWindowsPopups.Margin = new System.Windows.Forms.Padding(3, 3, 12, 3);
+            this.chkWindowsPopups.Name = "chkWindowsPopups";
+            this.chkWindowsPopups.Size = new System.Drawing.Size(177, 19);
+            this.chkWindowsPopups.TabIndex = 0;
+            this.chkWindowsPopups.Text = "Receber popups do Windows";
+            this.chkWindowsPopups.UseVisualStyleBackColor = true;
+            this.chkWindowsPopups.CheckedChanged += new System.EventHandler(this.chkWindowsPopups_CheckedChanged);
             // 
             // btnStopSelectedMonitor
             // 
@@ -1297,7 +1329,8 @@ namespace XrmTool_bravo
         private System.Windows.Forms.GroupBox configurationGroup;
         private System.Windows.Forms.TableLayoutPanel configurationLayout;
         private System.Windows.Forms.Label lblEntity;
-        private System.Windows.Forms.TextBox txtEntityLogicalName;
+        private System.Windows.Forms.ComboBox txtEntityLogicalName;
+        private System.Windows.Forms.Button btnSearchEntities;
         private System.Windows.Forms.Button btnLoadColumns;
         private System.Windows.Forms.Label lblInterval;
         private System.Windows.Forms.NumericUpDown nudIntervalSeconds;
@@ -1353,6 +1386,7 @@ namespace XrmTool_bravo
         private System.Windows.Forms.GroupBox activeMonitorsGroup;
         private System.Windows.Forms.TableLayoutPanel activeMonitorsLayout;
         private System.Windows.Forms.FlowLayoutPanel activeMonitorButtonPanel;
+        private System.Windows.Forms.CheckBox chkWindowsPopups;
         private System.Windows.Forms.Button btnStopSelectedMonitor;
         private System.Windows.Forms.Button btnRemoveSelectedMonitors;
         private System.Windows.Forms.Button btnPauseSelectedMonitors;

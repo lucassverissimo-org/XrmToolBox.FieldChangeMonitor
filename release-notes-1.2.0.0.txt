@@ -1,0 +1,9 @@
+Nova interface com navegação lateral e assistente passo a passo para criar e editar monitoramentos.
+Busca de tabelas do Dataverse por nome exibido ou nome lógico.
+Nova grade de monitoramentos com contagem dinâmica de registros, última consulta e rolagem.
+Ações individuais e em massa para pausar, continuar, editar, remover, importar e exportar monitoramentos.
+Nova tela de histórico e configurações persistentes por computador.
+Opção para ativar ou desativar popups do Windows sem interromper o registro das alterações.
+Exportações contêm apenas a definição necessária para recriar os monitoramentos, sem snapshots locais.
+Resolução adicional do nome do ModifiedBy quando o Dataverse retorna somente o GUID.
+Correções nos fluxos de criação, edição, remoção e atualização da interface.

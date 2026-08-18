@@ -240,6 +240,9 @@
     <Compile Include="MyPluginControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="MyPluginControl.ModernUi.cs">
+      <DependentUpon>MyPluginControl.cs</DependentUpon>
+    </Compile>
     <Compile Include="MyPluginControl.designer.cs">
       <DependentUpon>MyPluginControl.cs</DependentUpon>
     </Compile>

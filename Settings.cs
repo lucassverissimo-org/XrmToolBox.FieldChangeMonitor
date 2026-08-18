@@ -11,6 +11,14 @@ namespace XrmTool_bravo
     /// </remarks>
     public class Settings
     {
+        public bool EnableWindowsPopups { get; set; } = true;
+
+        public int MaximumRecentChanges { get; set; } = 100;
+
+        public bool ConfirmBeforeOpeningRecord { get; set; } = true;
+
+        public bool RestoreMonitorsOnStartup { get; set; } = true;
+
         public string LastUsedOrganizationWebappUrl { get; set; }
 
         public List<MonitorDefinition> SavedMonitors { get; set; } = new List<MonitorDefinition>();

@@ -88,6 +88,16 @@ if (-not $Version) {
 
 Write-Host "Preparando $packageId $Version" -ForegroundColor Cyan
 
+# NuGet normaliza o quarto segmento quando ele e zero (por exemplo, 1.2.0.0 vira 1.2.0).
+# O assembly continua usando os quatro segmentos, enquanto o pacote usa a forma normalizada.
+$versionParts = $Version.Split('.')
+$packageVersion = if ($versionParts.Length -eq 4 -and $versionParts[3] -eq '0') {
+    ($versionParts[0..2] -join '.')
+}
+else {
+    $Version
+}
+
 Set-RegexValue -Path $assemblyInfoPath -Pattern '(AssemblyVersion\(")[^"]+("\)\])' -Value $Version
 Set-RegexValue -Path $assemblyInfoPath -Pattern '(AssemblyFileVersion\(")[^"]+("\)\])' -Value $Version
 Set-RegexValue -Path $nuspecPath -Pattern '(<version>)[^<]+(</version>)' -Value $Version
@@ -100,7 +110,7 @@ if (-not [string]::IsNullOrWhiteSpace($ReleaseNotes)) {
         -Options ([System.Text.RegularExpressions.RegexOptions]::Singleline)
 }
 
-$packagePath = Join-Path $releaseDirectory "$packageId.$Version.nupkg"
+$packagePath = Join-Path $releaseDirectory "$packageId.$packageVersion.nupkg"
 $releaseDllPath = Join-Path $releaseDirectory "$packageId.dll"
 if (Test-Path -LiteralPath $releaseDllPath) {
     try {
@@ -155,7 +165,7 @@ try {
     $namespace = [System.Xml.XmlNamespaceManager]::new($packageXml.NameTable)
     $namespace.AddNamespace("n", "http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd")
     $metadata = $packageXml.SelectSingleNode("/n:package/n:metadata", $namespace)
-    if ($metadata.id -ne $packageId -or $metadata.version -ne $Version) {
+    if ($metadata.id -ne $packageId -or $metadata.version -ne $packageVersion) {
         throw "ID ou versao do nuspec interno nao corresponde ao release solicitado."
     }
 
@@ -211,12 +221,12 @@ Write-Host "SHA256: $packageHash"
 
 $versionExists = $null
 if (-not $SkipAvailabilityCheck) {
-    $versionExists = Test-NuGetVersionExists -RequestedVersion $Version
+    $versionExists = Test-NuGetVersionExists -RequestedVersion $packageVersion
     if ($versionExists -eq $true) {
-        Write-Warning "A versao $Version ja existe no NuGet e nao pode ser substituida."
+        Write-Warning "A versao NuGet $packageVersion ja existe e nao pode ser substituida."
     }
     elseif ($versionExists -eq $false) {
-        Write-Host "A versao $Version esta disponivel no NuGet." -ForegroundColor Green
+        Write-Host "A versao NuGet $packageVersion esta disponivel." -ForegroundColor Green
     }
 }
 

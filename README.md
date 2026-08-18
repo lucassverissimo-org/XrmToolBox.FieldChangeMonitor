@@ -17,13 +17,19 @@ Field Change Monitor is an XrmToolBox tool for monitoring Dataverse table field 
 - Keep and restore the 100 most recent changes per environment in a structured grid with ModifiedOn, ModifiedBy, record ID, event, field, and old/new values.
 - Open changed Dataverse records in the default browser after confirmation.
 - Receive Windows notifications when monitored values change.
+- Create and edit monitors through a guided four-step wizard.
+- Search Dataverse tables by display name or logical name.
+- Manage monitors from a scrollable grid with individual and bulk actions.
+- Track the current record count and last query time for every monitor.
+- Disable Windows popups without disabling change collection.
 
-## Version 1.1.0.3
+## Version 1.2.0.0
 
-This release keeps the 100 most recent changes across XrmToolBox sessions and persists
-the last snapshot collected by each monitor. Monitors still open paused and, when resumed,
-compare their saved snapshot with current Dataverse values so changes that happened while
-the monitor was paused or the tool was closed are recorded.
+This release introduces a redesigned navigation experience and a guided four-step wizard
+for creating and editing monitors. It also adds a scrollable monitor management grid with
+individual and bulk actions, dynamic record counts, last-query timestamps, popup preferences,
+table search, improved ModifiedBy name resolution, and configuration/history pages. Exported
+monitor definitions no longer include local snapshots.
 
 ## Packaging
 
@@ -32,12 +38,12 @@ check version availability, and optionally publish:
 
 ```powershell
 # Prepare and validate without publishing
-.\publish-release.ps1 -Version 1.1.0.3 `
+.\publish-release.ps1 -Version 1.2.0.0 `
   -ReleaseNotesFile .\release-notes.txt
 
 # Publish after reviewing the generated package
 $env:NUGET_API_KEY = "your-nuget-api-key"
-.\publish-release.ps1 -Version 1.1.0.3 `
+.\publish-release.ps1 -Version 1.2.0.0 `
   -ReleaseNotesFile .\release-notes.txt `
   -Publish
 Remove-Item Env:NUGET_API_KEY
