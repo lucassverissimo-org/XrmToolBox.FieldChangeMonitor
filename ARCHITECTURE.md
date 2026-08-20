@@ -1,10 +1,12 @@
 # Architecture
 
-This repository contains two independent XrmToolBox tools and one shared library:
+This repository contains two independent XrmToolBox tools, one shared library, and one development application:
 
 - `LucasVerissimo.XrmToolBox.FieldChangeMonitor`: monitoring UI and monitoring rules.
 - `LucasVerissimo.XrmToolBox.DataverseUsageExplorer`: usage-search UI, scanners, and parsers.
 - `LucasVerissimo.XrmToolBox.Shared`: a Shared Project containing reusable Dataverse and WinForms source.
+- `LucasVerissimo.XrmToolBox.ToolManager`: an internal WinForms application that discovers tool release manifests,
+  validates packages, and coordinates NuGet publishing. It is not an XrmToolBox plugin and is never packaged with a tool.
 
 ## Dependency direction
 

@@ -1,0 +1,14 @@
+{
+  "name": "Dataverse Usage Explorer",
+  "packageId": "LucasVerissimo.XrmToolBox.DataverseUsageExplorer",
+  "projectPath": "LucasVerissimo.XrmToolBox.DataverseUsageExplorer.csproj",
+  "nuspecPath": "LucasVerissimo.XrmToolBox.DataverseUsageExplorer.nuspec",
+  "assemblyInfoPath": "Properties/AssemblyInfo.cs",
+  "packageScriptPath": "../build-dataverse-usage-explorer-package.ps1",
+  "gitUrl": "https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/tree/main/LucasVerissimo.XrmToolBox.DataverseUsageExplorer",
+  "nuGetUrl": "https://www.nuget.org/packages/LucasVerissimo.XrmToolBox.DataverseUsageExplorer",
+  "targetFramework": ".NET Framework 4.8",
+  "validationScripts": [
+    "../tests/dataverse-usage-explorer-release-tests.ps1"
+  ]
+}

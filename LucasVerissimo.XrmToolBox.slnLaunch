@@ -1,0 +1,11 @@
+[
+  {
+    "Name": "Gerenciador de Ferramentas",
+    "Projects": [
+      {
+        "Path": "LucasVerissimo.XrmToolBox.ToolManager\\LucasVerissimo.XrmToolBox.ToolManager.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

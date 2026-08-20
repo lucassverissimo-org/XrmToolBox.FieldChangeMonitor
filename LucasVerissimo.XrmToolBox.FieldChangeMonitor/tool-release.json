@@ -1,0 +1,14 @@
+{
+  "name": "Field Change Monitor",
+  "packageId": "LucasVerissimo.XrmToolBox.FieldChangeMonitor",
+  "projectPath": "LucasVerissimo.XrmToolBox.FieldChangeMonitor.csproj",
+  "nuspecPath": "LucasVerissimo.XrmToolBox.FieldChangeMonitor.nuspec",
+  "assemblyInfoPath": "Properties/AssemblyInfo.cs",
+  "packageScriptPath": "../build-package.ps1",
+  "gitUrl": "https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/tree/main/LucasVerissimo.XrmToolBox.FieldChangeMonitor",
+  "nuGetUrl": "https://www.nuget.org/packages/LucasVerissimo.XrmToolBox.FieldChangeMonitor",
+  "targetFramework": ".NET Framework 4.8",
+  "validationScripts": [
+    "../tests/regression-tests.ps1"
+  ]
+}
