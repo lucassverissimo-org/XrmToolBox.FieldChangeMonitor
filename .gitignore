@@ -1,10 +1,92 @@
-/.vs/
-/bin/
-/obj/
-/packages/
-*.user
+# Visual Studio and IDE state
+.vs/
 *.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.csproj.user
+*.rsuser
+.vscode/
+.idea/
+
+# .NET build output
+[Bb]in/
+[Oo]bj/
+[Aa]rtifacts/
+Debug/
+Release/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+publish/
+app.publish/
+
+# NuGet and generated packages
+[Pp]ackages/
 *.nupkg
 *.snupkg
+*.nuget.targets
+*.nuget.props
+.nuget/
+obj/nuget/
+
+# Test and coverage output
+[Tt]est[Rr]esult*/
+[Tt]estResults/
+coverage/
+coverage.*
+*.coverage
+*.coveragexml
+*.trx
+
+# Compiler, debugger, and tooling artifacts
+*.dll
+*.exe
+*.pdb
+*.cache
+*.tlog
+*.lastbuildstate
+*.binlog
+*.opendb
+*.VC.db
+*.VC.VC.opendb
+*.tmp
+*.temp
+*.bak
+*.orig
 *.log
-TestResults/
+
+# ReSharper and other analysis tools
+_ReSharper*/
+*.DotSettings.user
+.sonarqube/
+
+# Local XrmToolBox runtime and exported user data
+XrmToolBox.settings
+Connections/
+Plugins/
+*.fcm.json
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+secrets.json
+*.publishsettings
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+*.jks
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files created by editors
+*~
+~$*

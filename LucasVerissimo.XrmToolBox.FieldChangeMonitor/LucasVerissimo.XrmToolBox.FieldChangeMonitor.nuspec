@@ -6,7 +6,7 @@
     <title>Field Change Monitor</title>
     <authors>Lucas Verissimo</authors>
     <owners>Lucas Verissimo</owners>
-    <projectUrl>https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor</projectUrl>
+    <projectUrl>https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/tree/main/LucasVerissimo.XrmToolBox.FieldChangeMonitor</projectUrl>
     <icon>field-change-monitor-128.png</icon>
     <readme>README.md</readme>
     <license type="expression">MIT</license>
@@ -34,6 +34,6 @@ Correções nos fluxos de criação, edição, remoção e atualização da inte
     <file src="..\bin\Release\LucasVerissimo.XrmToolBox.FieldChangeMonitor.dll" target="lib\net48\Plugins" />
     <file src="..\bin\Release\LucasVerissimo.XrmToolBox.Shared.dll" target="lib\net48\Plugins" />
     <file src="assets\field-change-monitor-128.png" target="" />
-    <file src="..\README.md" target="" />
+    <file src="README.md" target="" />
   </files>
 </package>

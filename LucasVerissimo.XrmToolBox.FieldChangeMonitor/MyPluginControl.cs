@@ -1,8 +1,3 @@
-using McTools.Xrm.Connection;
-using Microsoft.Xrm.Sdk;
-using Microsoft.Xrm.Sdk.Messages;
-using Microsoft.Xrm.Sdk.Metadata;
-using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -15,10 +10,16 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using LucasVerissimo.XrmToolBox.Shared.WinForms;
 using System.Xml.Linq;
-using XrmToolBox.Extensibility;
+using LucasVerissimo.XrmToolBox.Shared.BusinessLogic;
+using LucasVerissimo.XrmToolBox.Shared.WinForms;
+using McTools.Xrm.Connection;
+using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Messages;
+using Microsoft.Xrm.Sdk.Metadata;
+using Microsoft.Xrm.Sdk.Query;
 using Newtonsoft.Json;
+using XrmToolBox.Extensibility;
 
 namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 {
@@ -28,9 +29,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         private EntityMetadata currentEntityMetadata;
         private string currentEntityLogicalName;
         private readonly List<AttributeListItem> allColumnItems = new List<AttributeListItem>();
-        private readonly List<AttributeListItem> allConditionAttributeItems = new List<AttributeListItem>();
+        private readonly List<AttributeListItem> allConditionAttributeItems =
+            new List<AttributeListItem>();
         private readonly List<EntityListItem> allEntityItems = new List<EntityListItem>();
-        private readonly HashSet<string> checkedMonitoredColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> checkedMonitoredColumns = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase
+        );
         private readonly List<ActiveMonitor> activeMonitors = new List<ActiveMonitor>();
         private readonly List<FilterCondition> filterConditions = new List<FilterCondition>();
         private readonly object monitorsLock = new object();
@@ -88,9 +92,11 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
             mySettings.EnableWindowsPopups = chkWindowsPopups.Checked;
             SettingsManager.Instance.Save(GetType(), mySettings);
-            SetStatus(chkWindowsPopups.Checked
-                ? "Popups do Windows ativados."
-                : "Popups do Windows desativados.");
+            SetStatus(
+                chkWindowsPopups.Checked
+                    ? "Popups do Windows ativados."
+                    : "Popups do Windows desativados."
+            );
         }
 
         private void tsbClose_Click(object sender, EventArgs e)
@@ -145,7 +151,10 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 var width = lvConditions.ClientSize.Width;
                 colConditionField.Width = (int)(width * 0.36);
                 colConditionOperator.Width = (int)(width * 0.27);
-                colConditionValue.Width = Math.Max(80, width - colConditionField.Width - colConditionOperator.Width - 5);
+                colConditionValue.Width = Math.Max(
+                    80,
+                    width - colConditionField.Width - colConditionOperator.Width - 5
+                );
             }
             else if (sender == lvActiveMonitors && lvActiveMonitors.ClientSize.Width > 180)
             {
@@ -155,8 +164,16 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 colActiveColumns.Width = (int)(width * 0.20);
                 colActiveInterval.Width = (int)(width * 0.09);
                 colActiveStatus.Width = (int)(width * 0.14);
-                colActiveFilter.Width = Math.Max(90, width - colActiveName.Width - colActiveEntity.Width - colActiveColumns.Width -
-                    colActiveInterval.Width - colActiveStatus.Width - 5);
+                colActiveFilter.Width = Math.Max(
+                    90,
+                    width
+                        - colActiveName.Width
+                        - colActiveEntity.Width
+                        - colActiveColumns.Width
+                        - colActiveInterval.Width
+                        - colActiveStatus.Width
+                        - 5
+                );
             }
             else if (sender == lvRecentChanges && lvRecentChanges.ClientSize.Width > 300)
             {
@@ -313,7 +330,11 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         private void lvRecentChanges_MouseClick(object sender, MouseEventArgs e)
         {
             var hit = lvRecentChanges.HitTest(e.Location);
-            if (hit.Item == null || hit.SubItem == null || hit.Item.SubItems.IndexOf(hit.SubItem) != 2)
+            if (
+                hit.Item == null
+                || hit.SubItem == null
+                || hit.Item.SubItems.IndexOf(hit.SubItem) != 2
+            )
             {
                 return;
             }
@@ -333,62 +354,84 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
             if (string.IsNullOrWhiteSpace(entityLogicalName))
             {
-                MessageBox.Show("Informe o nome logico da entidade.", "Entidade obrigatoria", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "Informe o nome logico da entidade.",
+                    "Entidade obrigatoria",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
 
-            WorkAsync(new WorkAsyncInfo
-            {
-                Message = $"Carregando colunas de {entityLogicalName}",
-                Work = (worker, args) =>
+            WorkAsync(
+                new WorkAsyncInfo
                 {
-                    var request = new RetrieveEntityRequest
+                    Message = $"Carregando colunas de {entityLogicalName}",
+                    Work = (worker, args) =>
                     {
-                        LogicalName = entityLogicalName,
-                        EntityFilters = EntityFilters.Attributes
-                    };
+                        var metadataService = new DataverseMetadataService(Service);
+                        args.Result = metadataService.GetEntity(
+                            entityLogicalName,
+                            EntityFilters.Attributes,
+                            CancellationToken.None
+                        );
+                    },
+                    PostWorkCallBack = args =>
+                    {
+                        if (args.Error != null)
+                        {
+                            modernColumnsLoadedCallback = null;
+                            MessageBox.Show(
+                                args.Error.Message,
+                                "Erro ao carregar colunas",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error
+                            );
+                            SetStatus("Falha ao carregar colunas.");
+                            return;
+                        }
 
-                    args.Result = (RetrieveEntityResponse)Service.Execute(request);
-                },
-                PostWorkCallBack = args =>
-                {
-                    if (args.Error != null)
-                    {
+                        var entityMetadata = args.Result as EntityMetadata;
+                        if (entityMetadata == null)
+                        {
+                            modernColumnsLoadedCallback = null;
+                            MessageBox.Show(
+                                "Nao foi possivel ler os metadados da entidade.",
+                                "Metadados indisponiveis",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning
+                            );
+                            return;
+                        }
+
+                        var entityChanged = !string.Equals(
+                            currentEntityLogicalName,
+                            entityLogicalName,
+                            StringComparison.OrdinalIgnoreCase
+                        );
+                        currentEntityMetadata = entityMetadata;
+                        currentEntityLogicalName = entityLogicalName;
+                        PopulateColumns(currentEntityMetadata);
+                        PopulateConditionAttributes(currentEntityMetadata);
+                        if (entityChanged)
+                        {
+                            filterConditions.Clear();
+                            RefreshConditionList();
+                            txtConditionValue.Clear();
+                            txtFilterXml.Clear();
+                        }
+
+                        AddLog($"Colunas carregadas para {entityLogicalName}.");
+                        SetStatus(
+                            $"{clbColumns.Items.Count} colunas disponiveis para {entityLogicalName}."
+                        );
+                        UpdateConfigurationSummary();
+                        var callback = modernColumnsLoadedCallback;
                         modernColumnsLoadedCallback = null;
-                        MessageBox.Show(args.Error.Message, "Erro ao carregar colunas", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        SetStatus("Falha ao carregar colunas.");
-                        return;
-                    }
-
-                    var response = args.Result as RetrieveEntityResponse;
-                    if (response == null || response.EntityMetadata == null)
-                    {
-                        modernColumnsLoadedCallback = null;
-                        MessageBox.Show("Nao foi possivel ler os metadados da entidade.", "Metadados indisponiveis", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
-                    }
-
-                    var entityChanged = !string.Equals(currentEntityLogicalName, entityLogicalName, StringComparison.OrdinalIgnoreCase);
-                    currentEntityMetadata = response.EntityMetadata;
-                    currentEntityLogicalName = entityLogicalName;
-                    PopulateColumns(currentEntityMetadata);
-                    PopulateConditionAttributes(currentEntityMetadata);
-                    if (entityChanged)
-                    {
-                        filterConditions.Clear();
-                        RefreshConditionList();
-                        txtConditionValue.Clear();
-                        txtFilterXml.Clear();
-                    }
-
-                    AddLog($"Colunas carregadas para {entityLogicalName}.");
-                    SetStatus($"{clbColumns.Items.Count} colunas disponiveis para {entityLogicalName}.");
-                    UpdateConfigurationSummary();
-                    var callback = modernColumnsLoadedCallback;
-                    modernColumnsLoadedCallback = null;
-                    callback?.Invoke();
+                        callback?.Invoke();
+                    },
                 }
-            });
+            );
         }
 
         private void StartMonitoring()
@@ -406,7 +449,7 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 CancellationTokenSource = new CancellationTokenSource(),
                 PreviousSnapshot = new Dictionary<Guid, RecordSnapshot>(),
                 CreatedOn = DateTime.Now,
-                Status = "Iniciando"
+                Status = "Iniciando",
             };
 
             lock (monitorsLock)
@@ -417,7 +460,9 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             AddActiveMonitorListItem(monitor);
             SetMonitoringControls(false);
             PersistMonitorConfigurations();
-            AddLog($"Monitor adicionado para {configuration.EntityLogicalName} a cada {configuration.IntervalSeconds} segundo(s).");
+            AddLog(
+                $"Monitor adicionado para {configuration.EntityLogicalName} a cada {configuration.IntervalSeconds} segundo(s)."
+            );
             SetStatus("Monitorando...");
             notifyIcon.Visible = true;
 
@@ -428,7 +473,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         {
             if (lvActiveMonitors.SelectedItems.Count != 1)
             {
-                MessageBox.Show("Selecione exatamente um monitoramento para editar.", "Selecao obrigatoria", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "Selecione exatamente um monitoramento para editar.",
+                    "Selecao obrigatoria",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
                 return;
             }
 
@@ -450,7 +500,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
             if (editingMonitor != null)
             {
-                MessageBox.Show("Conclua ou cancele a edicao atual.", "Edicao em andamento", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "Conclua ou cancele a edicao atual.",
+                    "Edicao em andamento",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
                 return;
             }
 
@@ -461,117 +516,151 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             SetEditingUiState(true);
             SetMonitoringControls(false);
 
-            WorkAsync(new WorkAsyncInfo
-            {
-                Message = $"Carregando configuracao de {monitor.DisplayName}",
-                Work = (worker, args) =>
+            WorkAsync(
+                new WorkAsyncInfo
                 {
-                    args.Result = (RetrieveEntityResponse)Service.Execute(new RetrieveEntityRequest
+                    Message = $"Carregando configuracao de {monitor.DisplayName}",
+                    Work = (worker, args) =>
                     {
-                        LogicalName = monitor.Configuration.EntityLogicalName,
-                        EntityFilters = EntityFilters.Attributes
-                    });
-                },
-                PostWorkCallBack = args =>
-                {
-                    if (editingMonitor != monitor)
+                        var metadataService = new DataverseMetadataService(Service);
+                        args.Result = metadataService.GetEntity(
+                            monitor.Configuration.EntityLogicalName,
+                            EntityFilters.Attributes,
+                            CancellationToken.None
+                        );
+                    },
+                    PostWorkCallBack = args =>
                     {
-                        return;
-                    }
+                        if (editingMonitor != monitor)
+                        {
+                            return;
+                        }
 
-                    if (args.Error != null)
-                    {
-                        MessageBox.Show(args.Error.Message, "Nao foi possivel editar", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        CancelMonitorEditing(false);
-                        return;
-                    }
+                        if (args.Error != null)
+                        {
+                            MessageBox.Show(
+                                args.Error.Message,
+                                "Nao foi possivel editar",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error
+                            );
+                            CancelMonitorEditing(false);
+                            return;
+                        }
 
-                    var metadata = ((RetrieveEntityResponse)args.Result).EntityMetadata;
-                    currentEntityMetadata = metadata;
-                    currentEntityLogicalName = monitor.Configuration.EntityLogicalName;
-                    txtMonitorName.Text = monitor.DisplayName;
-                    txtEntityLogicalName.Text = monitor.Configuration.EntityLogicalName;
-                    nudIntervalSeconds.Value = Math.Max(nudIntervalSeconds.Minimum,
-                        Math.Min(nudIntervalSeconds.Maximum, monitor.Configuration.IntervalSeconds));
-                    PopulateColumns(metadata);
-                    foreach (var column in monitor.Configuration.MonitoredColumns)
-                    {
-                        checkedMonitoredColumns.Add(column);
-                    }
-                    ApplyColumnFilter();
-                    PopulateConditionAttributes(metadata);
-                    LoadFilterForEditing(monitor.Configuration.FilterXml);
-                    UpdateConfigurationSummary();
-                    SetStatus($"Editando {monitor.DisplayName}.");
+                        var metadata = (EntityMetadata)args.Result;
+                        currentEntityMetadata = metadata;
+                        currentEntityLogicalName = monitor.Configuration.EntityLogicalName;
+                        txtMonitorName.Text = monitor.DisplayName;
+                        txtEntityLogicalName.Text = monitor.Configuration.EntityLogicalName;
+                        nudIntervalSeconds.Value = Math.Max(
+                            nudIntervalSeconds.Minimum,
+                            Math.Min(
+                                nudIntervalSeconds.Maximum,
+                                monitor.Configuration.IntervalSeconds
+                            )
+                        );
+                        PopulateColumns(metadata);
+                        foreach (var column in monitor.Configuration.MonitoredColumns)
+                        {
+                            checkedMonitoredColumns.Add(column);
+                        }
+                        ApplyColumnFilter();
+                        PopulateConditionAttributes(metadata);
+                        LoadFilterForEditing(monitor.Configuration.FilterXml);
+                        UpdateConfigurationSummary();
+                        SetStatus($"Editando {monitor.DisplayName}.");
+                    },
                 }
-            });
+            );
         }
 
         private void LoadEntities()
         {
             if (Service == null)
             {
-                MessageBox.Show("Conecte-se a um ambiente antes de buscar entidades.", "Conexao obrigatoria", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "Conecte-se a um ambiente antes de buscar entidades.",
+                    "Conexao obrigatoria",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
 
-            var currentLogicalName = (txtEntityLogicalName.SelectedItem as EntityListItem)?.LogicalName
+            var currentLogicalName =
+                (txtEntityLogicalName.SelectedItem as EntityListItem)?.LogicalName
                 ?? txtEntityLogicalName.Text.Trim();
 
-            WorkAsync(new WorkAsyncInfo
-            {
-                Message = "Carregando entidades do Dataverse",
-                Work = (worker, args) =>
+            WorkAsync(
+                new WorkAsyncInfo
                 {
-                    args.Result = (RetrieveAllEntitiesResponse)Service.Execute(new RetrieveAllEntitiesRequest
+                    Message = "Carregando entidades do Dataverse",
+                    Work = (worker, args) =>
                     {
-                        EntityFilters = EntityFilters.Entity,
-                        RetrieveAsIfPublished = true
-                    });
-                },
-                PostWorkCallBack = args =>
-                {
-                    if (args.Error != null)
+                        var metadataService = new DataverseMetadataService(Service);
+                        args.Result = metadataService.GetEntities(CancellationToken.None);
+                    },
+                    PostWorkCallBack = args =>
                     {
-                        MessageBox.Show(args.Error.Message, "Erro ao buscar entidades", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        SetStatus("Falha ao buscar entidades.");
-                        return;
-                    }
+                        if (args.Error != null)
+                        {
+                            MessageBox.Show(
+                                args.Error.Message,
+                                "Erro ao buscar entidades",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error
+                            );
+                            SetStatus("Falha ao buscar entidades.");
+                            return;
+                        }
 
-                    var response = args.Result as RetrieveAllEntitiesResponse;
-                    allEntityItems.Clear();
-                    allEntityItems.AddRange((response?.EntityMetadata ?? new EntityMetadata[0])
-                        .Where(metadata => !string.IsNullOrWhiteSpace(metadata.LogicalName))
-                        .Select(metadata => new EntityListItem(metadata))
-                        .OrderBy(item => item.DisplayName)
-                        .ThenBy(item => item.LogicalName));
+                        var entityMetadata = args.Result as IReadOnlyCollection<EntityMetadata>;
+                        allEntityItems.Clear();
+                        allEntityItems.AddRange(
+                            (entityMetadata ?? new EntityMetadata[0])
+                                .Where(metadata => !string.IsNullOrWhiteSpace(metadata.LogicalName))
+                                .Select(metadata => new EntityListItem(metadata))
+                                .OrderBy(item => item.DisplayName)
+                                .ThenBy(item => item.LogicalName)
+                        );
 
-                    txtEntityLogicalName.BeginUpdate();
-                    txtEntityLogicalName.Items.Clear();
-                    txtEntityLogicalName.Items.AddRange(allEntityItems.Cast<object>().ToArray());
-                    txtEntityLogicalName.EndUpdate();
+                        txtEntityLogicalName.BeginUpdate();
+                        txtEntityLogicalName.Items.Clear();
+                        txtEntityLogicalName.Items.AddRange(
+                            allEntityItems.Cast<object>().ToArray()
+                        );
+                        txtEntityLogicalName.EndUpdate();
 
-                    var selectedIndex = allEntityItems.FindIndex(item =>
-                        string.Equals(item.LogicalName, currentLogicalName, StringComparison.OrdinalIgnoreCase));
-                    if (selectedIndex >= 0)
-                    {
-                        txtEntityLogicalName.SelectedIndex = selectedIndex;
-                    }
-                    else
-                    {
-                        txtEntityLogicalName.Text = currentLogicalName;
-                    }
+                        var selectedIndex = allEntityItems.FindIndex(item =>
+                            string.Equals(
+                                item.LogicalName,
+                                currentLogicalName,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        );
+                        if (selectedIndex >= 0)
+                        {
+                            txtEntityLogicalName.SelectedIndex = selectedIndex;
+                        }
+                        else
+                        {
+                            txtEntityLogicalName.Text = currentLogicalName;
+                        }
 
-                    txtEntityLogicalName.DroppedDown = true;
-                    SetStatus($"{allEntityItems.Count} entidades disponiveis para pesquisa.");
+                        txtEntityLogicalName.DroppedDown = true;
+                        SetStatus($"{allEntityItems.Count} entidades disponiveis para pesquisa.");
+                    },
                 }
-            });
+            );
         }
 
         private string GetSelectedEntityLogicalName()
         {
             var selectedEntity = txtEntityLogicalName.SelectedItem as EntityListItem;
-            return selectedEntity == null ? txtEntityLogicalName.Text.Trim() : selectedEntity.LogicalName;
+            return selectedEntity == null
+                ? txtEntityLogicalName.Text.Trim()
+                : selectedEntity.LogicalName;
         }
 
         private void LoadFilterForEditing(string filterXml)
@@ -598,12 +687,27 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                     var attributeName = (string)element.Attribute("attribute");
                     var operatorName = (string)element.Attribute("operator");
                     var attribute = allConditionAttributeItems.FirstOrDefault(item =>
-                        string.Equals(item.LogicalName, attributeName, StringComparison.OrdinalIgnoreCase));
-                    var conditionOperator = cboConditionOperator.Items.Cast<object>().OfType<ConditionOperatorItem>()
-                        .FirstOrDefault(item => string.Equals(item.Operator, operatorName, StringComparison.OrdinalIgnoreCase));
+                        string.Equals(
+                            item.LogicalName,
+                            attributeName,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    );
+                    var conditionOperator = cboConditionOperator
+                        .Items.Cast<object>()
+                        .OfType<ConditionOperatorItem>()
+                        .FirstOrDefault(item =>
+                            string.Equals(
+                                item.Operator,
+                                operatorName,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        );
                     if (string.IsNullOrWhiteSpace(attributeName) || conditionOperator == null)
                     {
-                        throw new InvalidOperationException("Uma condicao nao pode ser representada pelo construtor visual.");
+                        throw new InvalidOperationException(
+                            "Uma condicao nao pode ser representada pelo construtor visual."
+                        );
                     }
 
                     var values = element.Elements("value").Select(value => value.Value).ToList();
@@ -613,14 +717,17 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                         values.Insert(0, singleValue);
                     }
 
-                    filterConditions.Add(new FilterCondition
-                    {
-                        AttributeLogicalName = attributeName,
-                        AttributeDisplayName = attribute == null ? attributeName : attribute.DisplayName,
-                        Operator = conditionOperator.Operator,
-                        OperatorDisplayName = conditionOperator.DisplayName,
-                        Values = values
-                    });
+                    filterConditions.Add(
+                        new FilterCondition
+                        {
+                            AttributeLogicalName = attributeName,
+                            AttributeDisplayName =
+                                attribute == null ? attributeName : attribute.DisplayName,
+                            Operator = conditionOperator.Operator,
+                            OperatorDisplayName = conditionOperator.DisplayName,
+                            Values = values,
+                        }
+                    );
                 }
 
                 cboFilterType.SelectedItem = filterType == "or" ? "or" : "and";
@@ -632,7 +739,9 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 filterConditions.Clear();
                 RefreshConditionList();
                 txtFilterXml.Text = filterXml;
-                AddLog($"Filtro de {editingMonitor?.DisplayName}: edite pelo FetchXML avancado. {ex.Message}");
+                AddLog(
+                    $"Filtro de {editingMonitor?.DisplayName}: edite pelo FetchXML avancado. {ex.Message}"
+                );
             }
         }
 
@@ -707,9 +816,10 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             btnStart.BringToFront();
             btnCancelEdit.BringToFront();
             ResizeConfigurationSummary();
-            lblConfigurationReady.Text = editing && editingMonitor != null
-                ? $"Editando: {editingMonitor.DisplayName}"
-                : "Configure o monitoramento";
+            lblConfigurationReady.Text =
+                editing && editingMonitor != null
+                    ? $"Editando: {editingMonitor.DisplayName}"
+                    : "Configure o monitoramento";
             lvActiveMonitors.Enabled = !editing;
             btnEditMonitor.Enabled = !editing && lvActiveMonitors.Items.Count > 0;
             btnRemoveSelectedMonitors.Enabled = !editing && HasActiveMonitors();
@@ -731,8 +841,14 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             }
 
             var rightBoundary = btnCancelEdit.Visible ? btnCancelEdit.Left : btnStart.Left;
-            lblConfigurationSummary.Width = Math.Max(80, rightBoundary - lblConfigurationSummary.Left - 12);
-            lblConfigurationReady.Width = Math.Max(80, rightBoundary - lblConfigurationReady.Left - 12);
+            lblConfigurationSummary.Width = Math.Max(
+                80,
+                rightBoundary - lblConfigurationSummary.Left - 12
+            );
+            lblConfigurationReady.Width = Math.Max(
+                80,
+                rightBoundary - lblConfigurationReady.Left - 12
+            );
         }
 
         private void RefreshActiveMonitorListItem(ActiveMonitor monitor)
@@ -746,7 +862,9 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             item.SubItems[0].Text = monitor.DisplayName;
             item.SubItems[1].Text = monitor.Configuration.EntityLogicalName;
             item.SubItems[2].Text = string.Join(", ", monitor.Configuration.MonitoredColumns);
-            item.SubItems[3].Text = monitor.Configuration.IntervalSeconds.ToString(CultureInfo.InvariantCulture);
+            item.SubItems[3].Text = monitor.Configuration.IntervalSeconds.ToString(
+                CultureInfo.InvariantCulture
+            );
             item.SubItems[4].Text = monitor.Status;
             item.SubItems[5].Text = string.IsNullOrWhiteSpace(monitor.Configuration.FilterXml)
                 ? "(sem filtro)"
@@ -760,7 +878,10 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 return;
             }
 
-            if (monitor.CancellationTokenSource == null || monitor.CancellationTokenSource.IsCancellationRequested)
+            if (
+                monitor.CancellationTokenSource == null
+                || monitor.CancellationTokenSource.IsCancellationRequested
+            )
             {
                 monitor.CancellationTokenSource = new CancellationTokenSource();
             }
@@ -774,17 +895,35 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             var monitorName = txtMonitorName.Text.Trim();
             if (string.IsNullOrWhiteSpace(monitorName))
             {
-                MessageBox.Show("Informe um nome para identificar o monitoramento.", "Nome obrigatorio", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "Informe um nome para identificar o monitoramento.",
+                    "Nome obrigatorio",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 txtMonitorName.Focus();
                 return null;
             }
 
             lock (monitorsLock)
             {
-                if (activeMonitors.Any(monitor => monitor != editingMonitor &&
-                    string.Equals(monitor.DisplayName, monitorName, StringComparison.CurrentCultureIgnoreCase)))
+                if (
+                    activeMonitors.Any(monitor =>
+                        monitor != editingMonitor
+                        && string.Equals(
+                            monitor.DisplayName,
+                            monitorName,
+                            StringComparison.CurrentCultureIgnoreCase
+                        )
+                    )
+                )
                 {
-                    MessageBox.Show("Ja existe um monitoramento com esse nome.", "Nome duplicado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show(
+                        "Ja existe um monitoramento com esse nome.",
+                        "Nome duplicado",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
                     txtMonitorName.Focus();
                     return null;
                 }
@@ -793,13 +932,30 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             var entityLogicalName = GetSelectedEntityLogicalName();
             if (string.IsNullOrWhiteSpace(entityLogicalName))
             {
-                MessageBox.Show("Informe o nome logico da entidade.", "Entidade obrigatoria", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "Informe o nome logico da entidade.",
+                    "Entidade obrigatoria",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return null;
             }
 
-            if (currentEntityMetadata == null || !string.Equals(currentEntityLogicalName, entityLogicalName, StringComparison.OrdinalIgnoreCase))
+            if (
+                currentEntityMetadata == null
+                || !string.Equals(
+                    currentEntityLogicalName,
+                    entityLogicalName,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
             {
-                MessageBox.Show("Carregue as colunas da entidade antes de iniciar o monitoramento.", "Colunas nao carregadas", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "Carregue as colunas da entidade antes de iniciar o monitoramento.",
+                    "Colunas nao carregadas",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return null;
             }
 
@@ -810,13 +966,23 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
             if (monitoredColumns.Count == 0)
             {
-                MessageBox.Show("Selecione ao menos uma coluna para monitorar.", "Colunas obrigatorias", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "Selecione ao menos uma coluna para monitorar.",
+                    "Colunas obrigatorias",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return null;
             }
 
             if (string.IsNullOrWhiteSpace(currentEntityMetadata.PrimaryIdAttribute))
             {
-                MessageBox.Show("A entidade nao possui uma coluna primaria identificavel.", "Entidade invalida", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "A entidade nao possui uma coluna primaria identificavel.",
+                    "Entidade invalida",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return null;
             }
 
@@ -824,7 +990,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             string filterError;
             if (!TryNormalizeFilterXml(txtFilterXml.Text, out normalizedFilter, out filterError))
             {
-                MessageBox.Show(filterError, "Filtro invalido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    filterError,
+                    "Filtro invalido",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return null;
             }
 
@@ -838,7 +1009,13 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 MonitoredColumns = monitoredColumns,
                 IntervalSeconds = Convert.ToInt32(nudIntervalSeconds.Value),
                 FilterXml = normalizedFilter,
-                FetchXml = BuildFetchXml(entityLogicalName, currentEntityMetadata.PrimaryIdAttribute, currentEntityMetadata.PrimaryNameAttribute, monitoredColumns, normalizedFilter)
+                FetchXml = BuildFetchXml(
+                    entityLogicalName,
+                    currentEntityMetadata.PrimaryIdAttribute,
+                    currentEntityMetadata.PrimaryNameAttribute,
+                    monitoredColumns,
+                    normalizedFilter
+                ),
             };
         }
 
@@ -853,7 +1030,8 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 {
                     try
                     {
-                        await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken).ConfigureAwait(false);
+                        await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken)
+                            .ConfigureAwait(false);
                     }
                     catch (TaskCanceledException)
                     {
@@ -882,14 +1060,20 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                         RunOnUiThread(() =>
                         {
                             UpdateActiveMonitorStatus(monitor, $"Ativo ({currentSnapshot.Count})");
-                            AddLog($"[{monitor.DisplayName}] Snapshot inicial registrado com {currentSnapshot.Count} registro(s).");
+                            AddLog(
+                                $"[{monitor.DisplayName}] Snapshot inicial registrado com {currentSnapshot.Count} registro(s)."
+                            );
                             SetStatus($"Monitorando {currentSnapshot.Count} registro(s).");
                             RefreshModernMonitorGrid();
                         });
                     }
                     else
                     {
-                        var changes = DetectChanges(monitor.PreviousSnapshot, currentSnapshot, configuration);
+                        var changes = DetectChanges(
+                            monitor.PreviousSnapshot,
+                            currentSnapshot,
+                            configuration
+                        );
                         monitor.PreviousSnapshot = currentSnapshot;
                         monitor.NeedsBaselineReset = false;
                         isFirstRun = false;
@@ -898,14 +1082,22 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                         {
                             if (changes.Count > 0)
                             {
-                                UpdateActiveMonitorStatus(monitor, $"{changes.Count} alteracao(oes)");
+                                UpdateActiveMonitorStatus(
+                                    monitor,
+                                    $"{changes.Count} alteracao(oes)"
+                                );
                                 ReportChanges(monitor, changes);
                                 SetStatus($"{changes.Count} alteracao(oes) detectada(s).");
                             }
                             else
                             {
-                                UpdateActiveMonitorStatus(monitor, $"Ativo ({currentSnapshot.Count})");
-                                SetStatus($"Sem alteracoes. Ultima consulta: {DateTime.Now:HH:mm:ss}");
+                                UpdateActiveMonitorStatus(
+                                    monitor,
+                                    $"Ativo ({currentSnapshot.Count})"
+                                );
+                                SetStatus(
+                                    $"Sem alteracoes. Ultima consulta: {DateTime.Now:HH:mm:ss}"
+                                );
                             }
 
                             RefreshModernMonitorGrid();
@@ -924,7 +1116,11 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
                 try
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(configuration.IntervalSeconds), cancellationToken).ConfigureAwait(false);
+                    await Task.Delay(
+                            TimeSpan.FromSeconds(configuration.IntervalSeconds),
+                            cancellationToken
+                        )
+                        .ConfigureAwait(false);
                 }
                 catch (TaskCanceledException)
                 {
@@ -932,14 +1128,18 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 }
             }
 
-            if (monitor.CancellationTokenSource != null &&
-                monitor.CancellationTokenSource.Token == cancellationToken)
+            if (
+                monitor.CancellationTokenSource != null
+                && monitor.CancellationTokenSource.Token == cancellationToken
+            )
             {
                 RunOnUiThread(() => UpdateActiveMonitorStatus(monitor, "Parado"));
             }
         }
 
-        private Dictionary<Guid, RecordSnapshot> RetrieveSnapshot(MonitoringConfiguration configuration)
+        private Dictionary<Guid, RecordSnapshot> RetrieveSnapshot(
+            MonitoringConfiguration configuration
+        )
         {
             var snapshot = new Dictionary<Guid, RecordSnapshot>();
             var pageNumber = 1;
@@ -975,8 +1175,7 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 moreRecords = result.MoreRecords;
                 pagingCookie = result.PagingCookie;
                 pageNumber++;
-            }
-            while (moreRecords);
+            } while (moreRecords);
 
             return snapshot;
         }
@@ -984,7 +1183,8 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         private List<FieldChange> DetectChanges(
             Dictionary<Guid, RecordSnapshot> oldSnapshot,
             Dictionary<Guid, RecordSnapshot> currentSnapshot,
-            MonitoringConfiguration configuration)
+            MonitoringConfiguration configuration
+        )
         {
             var changes = new List<FieldChange>();
 
@@ -997,13 +1197,16 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                     {
                         FieldValue currentValue;
                         currentRecord.Values.TryGetValue(column, out currentValue);
-                        changes.Add(CreateFieldChange(
-                            currentRecord,
-                            configuration.EntityLogicalName,
-                            column,
-                            ChangeKind.EnteredFilter,
-                            null,
-                            currentValue));
+                        changes.Add(
+                            CreateFieldChange(
+                                currentRecord,
+                                configuration.EntityLogicalName,
+                                column,
+                                ChangeKind.EnteredFilter,
+                                null,
+                                currentValue
+                            )
+                        );
                     }
 
                     continue;
@@ -1017,38 +1220,59 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                     oldRecord.Values.TryGetValue(column, out oldValue);
                     currentRecord.Values.TryGetValue(column, out currentValue);
 
-                    var oldNormalizedValue = oldValue == null ? string.Empty : oldValue.NormalizedValue;
-                    var currentNormalizedValue = currentValue == null ? string.Empty : currentValue.NormalizedValue;
+                    var oldNormalizedValue =
+                        oldValue == null ? string.Empty : oldValue.NormalizedValue;
+                    var currentNormalizedValue =
+                        currentValue == null ? string.Empty : currentValue.NormalizedValue;
 
-                    if (!string.Equals(oldNormalizedValue, currentNormalizedValue, StringComparison.Ordinal))
+                    if (
+                        !string.Equals(
+                            oldNormalizedValue,
+                            currentNormalizedValue,
+                            StringComparison.Ordinal
+                        )
+                    )
                     {
-                        changes.Add(CreateFieldChange(
-                            currentRecord,
-                            configuration.EntityLogicalName,
-                            column,
-                            ChangeKind.ValueChanged,
-                            oldValue,
-                            currentValue));
+                        changes.Add(
+                            CreateFieldChange(
+                                currentRecord,
+                                configuration.EntityLogicalName,
+                                column,
+                                ChangeKind.ValueChanged,
+                                oldValue,
+                                currentValue
+                            )
+                        );
                     }
                 }
             }
 
-            foreach (var oldRecord in oldSnapshot.Values.Where(record => !currentSnapshot.ContainsKey(record.RecordId)))
+            foreach (
+                var oldRecord in oldSnapshot.Values.Where(record =>
+                    !currentSnapshot.ContainsKey(record.RecordId)
+                )
+            )
             {
-                var recordOutsideFilter = RetrieveRecordWithoutMonitorFilter(configuration, oldRecord.RecordId);
+                var recordOutsideFilter = RetrieveRecordWithoutMonitorFilter(
+                    configuration,
+                    oldRecord.RecordId
+                );
                 if (recordOutsideFilter == null)
                 {
                     foreach (var column in configuration.MonitoredColumns)
                     {
                         FieldValue oldValue;
                         oldRecord.Values.TryGetValue(column, out oldValue);
-                        changes.Add(CreateFieldChange(
-                            oldRecord,
-                            configuration.EntityLogicalName,
-                            column,
-                            ChangeKind.RecordUnavailable,
-                            oldValue,
-                            null));
+                        changes.Add(
+                            CreateFieldChange(
+                                oldRecord,
+                                configuration.EntityLogicalName,
+                                column,
+                                ChangeKind.RecordUnavailable,
+                                oldValue,
+                                null
+                            )
+                        );
                     }
 
                     continue;
@@ -1060,32 +1284,50 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                     FieldValue currentValue;
                     oldRecord.Values.TryGetValue(column, out oldValue);
                     recordOutsideFilter.Values.TryGetValue(column, out currentValue);
-                    changes.Add(CreateFieldChange(
-                        recordOutsideFilter,
-                        configuration.EntityLogicalName,
-                        column,
-                        ChangeKind.ExitedFilter,
-                        oldValue,
-                        currentValue));
+                    changes.Add(
+                        CreateFieldChange(
+                            recordOutsideFilter,
+                            configuration.EntityLogicalName,
+                            column,
+                            ChangeKind.ExitedFilter,
+                            oldValue,
+                            currentValue
+                        )
+                    );
                 }
             }
 
             return changes;
         }
 
-        private RecordSnapshot RetrieveRecordWithoutMonitorFilter(MonitoringConfiguration configuration, Guid recordId)
+        private RecordSnapshot RetrieveRecordWithoutMonitorFilter(
+            MonitoringConfiguration configuration,
+            Guid recordId
+        )
         {
-            var columns = configuration.MonitoredColumns
-                .Concat(new[] { configuration.PrimaryIdAttribute, configuration.PrimaryNameAttribute, "modifiedon", "modifiedby" })
+            var columns = configuration
+                .MonitoredColumns.Concat(
+                    new[]
+                    {
+                        configuration.PrimaryIdAttribute,
+                        configuration.PrimaryNameAttribute,
+                        "modifiedon",
+                        "modifiedby",
+                    }
+                )
                 .Where(column => !string.IsNullOrWhiteSpace(column))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
             var query = new QueryExpression(configuration.EntityLogicalName)
             {
                 ColumnSet = new ColumnSet(columns),
-                TopCount = 1
+                TopCount = 1,
             };
-            query.Criteria.AddCondition(configuration.PrimaryIdAttribute, ConditionOperator.Equal, recordId);
+            query.Criteria.AddCondition(
+                configuration.PrimaryIdAttribute,
+                ConditionOperator.Equal,
+                recordId
+            );
 
             EntityCollection result;
             lock (serviceLock)
@@ -1097,17 +1339,22 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             return entity == null ? null : CreateRecordSnapshot(entity, configuration);
         }
 
-        private RecordSnapshot CreateRecordSnapshot(Entity entity, MonitoringConfiguration configuration)
+        private RecordSnapshot CreateRecordSnapshot(
+            Entity entity,
+            MonitoringConfiguration configuration
+        )
         {
             var values = new Dictionary<string, FieldValue>(StringComparer.OrdinalIgnoreCase);
             foreach (var column in configuration.MonitoredColumns)
             {
                 var rawValue = entity.Contains(column) ? entity[column] : null;
-                var formattedValue = entity.FormattedValues.Contains(column) ? entity.FormattedValues[column] : null;
+                var formattedValue = entity.FormattedValues.Contains(column)
+                    ? entity.FormattedValues[column]
+                    : null;
                 values[column] = new FieldValue
                 {
                     NormalizedValue = NormalizeValue(rawValue),
-                    DisplayValue = FormatValue(rawValue, formattedValue)
+                    DisplayValue = FormatValue(rawValue, formattedValue),
                 };
             }
 
@@ -1115,11 +1362,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             {
                 RecordId = entity.Id,
                 RecordName = GetRecordName(entity, configuration.PrimaryNameAttribute),
-                ModifiedOn = entity.Contains("modifiedon") && entity["modifiedon"] is DateTime
-                    ? ((DateTime)entity["modifiedon"]).ToLocalTime()
-                    : DateTime.Now,
+                ModifiedOn =
+                    entity.Contains("modifiedon") && entity["modifiedon"] is DateTime
+                        ? ((DateTime)entity["modifiedon"]).ToLocalTime()
+                        : DateTime.Now,
                 ModifiedBy = ResolveModifiedBy(entity, configuration),
-                Values = values
+                Values = values,
             };
         }
 
@@ -1128,7 +1376,9 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             var formattedValue = entity.FormattedValues.Contains("modifiedby")
                 ? entity.FormattedValues["modifiedby"]
                 : null;
-            var reference = entity.Contains("modifiedby") ? entity["modifiedby"] as EntityReference : null;
+            var reference = entity.Contains("modifiedby")
+                ? entity["modifiedby"] as EntityReference
+                : null;
 
             if (!string.IsNullOrWhiteSpace(formattedValue))
             {
@@ -1145,7 +1395,10 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
             if (reference == null)
             {
-                return FormatValue(entity.Contains("modifiedby") ? entity["modifiedby"] : null, null);
+                return FormatValue(
+                    entity.Contains("modifiedby") ? entity["modifiedby"] : null,
+                    null
+                );
             }
 
             if (!string.IsNullOrWhiteSpace(reference.Name))
@@ -1172,7 +1425,11 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 Entity user;
                 lock (serviceLock)
                 {
-                    user = configuration.Service.Retrieve("systemuser", reference.Id, new ColumnSet("fullname"));
+                    user = configuration.Service.Retrieve(
+                        "systemuser",
+                        reference.Id,
+                        new ColumnSet("fullname")
+                    );
                 }
 
                 var fullName = user.GetAttributeValue<string>("fullname");
@@ -1200,7 +1457,8 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             string column,
             ChangeKind kind,
             FieldValue oldValue,
-            FieldValue newValue)
+            FieldValue newValue
+        )
         {
             return new FieldChange
             {
@@ -1212,7 +1470,7 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 ColumnLogicalName = column,
                 Kind = kind,
                 OldValue = oldValue == null ? "(vazio)" : oldValue.DisplayValue,
-                NewValue = newValue == null ? "(vazio)" : newValue.DisplayValue
+                NewValue = newValue == null ? "(vazio)" : newValue.DisplayValue,
             };
         }
 
@@ -1220,7 +1478,9 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         {
             foreach (var change in changes.Take(20))
             {
-                AddLog($"[{monitor.DisplayName}] {change.EventDescription}: {change.RecordName} [{change.RecordId}] - {change.ColumnLogicalName}: {change.ChangeDescription}");
+                AddLog(
+                    $"[{monitor.DisplayName}] {change.EventDescription}: {change.RecordName} [{change.RecordId}] - {change.ColumnLogicalName}: {change.ChangeDescription}"
+                );
             }
 
             foreach (var change in changes)
@@ -1278,14 +1538,24 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private void RestoreRecentChangesIfPossible()
         {
-            if (recentChangesRestored || mySettings == null || string.IsNullOrWhiteSpace(currentEnvironmentUrl))
+            if (
+                recentChangesRestored
+                || mySettings == null
+                || string.IsNullOrWhiteSpace(currentEnvironmentUrl)
+            )
             {
                 return;
             }
 
             recentChangesRestored = true;
             var changes = (mySettings.RecentChanges ?? new List<PersistedFieldChange>())
-                .Where(change => string.Equals(NormalizeEnvironmentUrl(change.EnvironmentUrl), NormalizeEnvironmentUrl(currentEnvironmentUrl), StringComparison.OrdinalIgnoreCase))
+                .Where(change =>
+                    string.Equals(
+                        NormalizeEnvironmentUrl(change.EnvironmentUrl),
+                        NormalizeEnvironmentUrl(currentEnvironmentUrl),
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
                 .OrderByDescending(change => change.ModifiedOn)
                 .Take(GetMaximumRecentChanges())
                 .ToList();
@@ -1295,19 +1565,21 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             {
                 foreach (var persisted in changes.OrderBy(change => change.ModifiedOn))
                 {
-                    AddRecentChangeToList(new FieldChange
-                    {
-                        RecordId = persisted.RecordId,
-                        RecordName = persisted.RecordName,
-                        EntityLogicalName = persisted.EntityLogicalName,
-                        MonitorName = persisted.MonitorName,
-                        ModifiedOn = persisted.ModifiedOn,
-                        ModifiedBy = persisted.ModifiedBy,
-                        ColumnLogicalName = persisted.ColumnLogicalName,
-                        Kind = (ChangeKind)persisted.Kind,
-                        OldValue = persisted.OldValue,
-                        NewValue = persisted.NewValue
-                    });
+                    AddRecentChangeToList(
+                        new FieldChange
+                        {
+                            RecordId = persisted.RecordId,
+                            RecordName = persisted.RecordName,
+                            EntityLogicalName = persisted.EntityLogicalName,
+                            MonitorName = persisted.MonitorName,
+                            ModifiedOn = persisted.ModifiedOn,
+                            ModifiedBy = persisted.ModifiedBy,
+                            ColumnLogicalName = persisted.ColumnLogicalName,
+                            Kind = (ChangeKind)persisted.Kind,
+                            OldValue = persisted.OldValue,
+                            NewValue = persisted.NewValue,
+                        }
+                    );
                 }
             }
             finally
@@ -1342,26 +1614,35 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             }
 
             var otherEnvironments = (mySettings.RecentChanges ?? new List<PersistedFieldChange>())
-                .Where(change => !string.Equals(NormalizeEnvironmentUrl(change.EnvironmentUrl), NormalizeEnvironmentUrl(currentEnvironmentUrl), StringComparison.OrdinalIgnoreCase))
+                .Where(change =>
+                    !string.Equals(
+                        NormalizeEnvironmentUrl(change.EnvironmentUrl),
+                        NormalizeEnvironmentUrl(currentEnvironmentUrl),
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
                 .ToList();
-            otherEnvironments.AddRange(lvRecentChanges.Items.Cast<ListViewItem>()
-                .Take(GetMaximumRecentChanges())
-                .Select(item => item.Tag as FieldChange)
-                .Where(change => change != null)
-                .Select(change => new PersistedFieldChange
-                {
-                    EnvironmentUrl = currentEnvironmentUrl,
-                    RecordId = change.RecordId,
-                    RecordName = change.RecordName,
-                    EntityLogicalName = change.EntityLogicalName,
-                    MonitorName = change.MonitorName,
-                    ModifiedOn = change.ModifiedOn,
-                    ModifiedBy = change.ModifiedBy,
-                    ColumnLogicalName = change.ColumnLogicalName,
-                    Kind = (int)change.Kind,
-                    OldValue = change.OldValue,
-                    NewValue = change.NewValue
-                }));
+            otherEnvironments.AddRange(
+                lvRecentChanges
+                    .Items.Cast<ListViewItem>()
+                    .Take(GetMaximumRecentChanges())
+                    .Select(item => item.Tag as FieldChange)
+                    .Where(change => change != null)
+                    .Select(change => new PersistedFieldChange
+                    {
+                        EnvironmentUrl = currentEnvironmentUrl,
+                        RecordId = change.RecordId,
+                        RecordName = change.RecordName,
+                        EntityLogicalName = change.EntityLogicalName,
+                        MonitorName = change.MonitorName,
+                        ModifiedOn = change.ModifiedOn,
+                        ModifiedBy = change.ModifiedBy,
+                        ColumnLogicalName = change.ColumnLogicalName,
+                        Kind = (int)change.Kind,
+                        OldValue = change.OldValue,
+                        NewValue = change.NewValue,
+                    })
+            );
             mySettings.RecentChanges = otherEnvironments;
             SettingsManager.Instance.Save(GetType(), mySettings);
         }
@@ -1370,7 +1651,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         {
             if (string.IsNullOrWhiteSpace(currentEnvironmentUrl))
             {
-                MessageBox.Show("A URL do ambiente nao esta disponivel.", "Nao foi possivel abrir o registro", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "A URL do ambiente nao esta disponivel.",
+                    "Nao foi possivel abrir o registro",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
 
@@ -1380,7 +1666,8 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                     $"Deseja abrir o registro {change.RecordId:D} no navegador padrao?",
                     "Abrir registro do Dataverse",
                     MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
+                    MessageBoxIcon.Question
+                );
                 if (confirmation != DialogResult.Yes)
                 {
                     return;
@@ -1389,7 +1676,8 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
             var baseUrl = currentEnvironmentUrl.TrimEnd('/');
             var recordId = Uri.EscapeDataString(change.RecordId.ToString("D"));
-            var url = $"{baseUrl}/main.aspx?pagetype=entityrecord&etn={Uri.EscapeDataString(change.EntityLogicalName)}&id={recordId}";
+            var url =
+                $"{baseUrl}/main.aspx?pagetype=entityrecord&etn={Uri.EscapeDataString(change.EntityLogicalName)}&id={recordId}";
             Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
         }
 
@@ -1400,7 +1688,9 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
             foreach (var change in changes.Take(4))
             {
-                builder.AppendLine($"{change.EventDescription} - {change.ColumnLogicalName}: {TrimForAlert(change.ChangeDescription)}");
+                builder.AppendLine(
+                    $"{change.EventDescription} - {change.ColumnLogicalName}: {TrimForAlert(change.ChangeDescription)}"
+                );
             }
 
             if (changes.Count > 4)
@@ -1421,7 +1711,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             return value.Length <= 40 ? value : value.Substring(0, 37) + "...";
         }
 
-        private MonitorDefinition ToDefinition(ActiveMonitor monitor, bool includeEnvironment, bool includeGeneratedFetch, bool includeSnapshot)
+        private MonitorDefinition ToDefinition(
+            ActiveMonitor monitor,
+            bool includeEnvironment,
+            bool includeGeneratedFetch,
+            bool includeSnapshot
+        )
         {
             return new MonitorDefinition
             {
@@ -1435,43 +1730,61 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 FetchXml = includeGeneratedFetch ? monitor.Configuration.FetchXml : null,
                 IsPaused = monitor.IsPaused,
                 EnvironmentUrl = includeEnvironment ? currentEnvironmentUrl : null,
-                LastSnapshot = includeSnapshot ? ToPersistedSnapshot(monitor.PreviousSnapshot) : null
+                LastSnapshot = includeSnapshot
+                    ? ToPersistedSnapshot(monitor.PreviousSnapshot)
+                    : null,
             };
         }
 
-        private static List<PersistedRecordSnapshot> ToPersistedSnapshot(Dictionary<Guid, RecordSnapshot> snapshot)
+        private static List<PersistedRecordSnapshot> ToPersistedSnapshot(
+            Dictionary<Guid, RecordSnapshot> snapshot
+        )
         {
-            return (snapshot ?? new Dictionary<Guid, RecordSnapshot>()).Values.Select(record => new PersistedRecordSnapshot
-            {
-                RecordId = record.RecordId,
-                RecordName = record.RecordName,
-                ModifiedOn = record.ModifiedOn,
-                ModifiedBy = record.ModifiedBy,
-                Values = (record.Values ?? new Dictionary<string, FieldValue>()).Select(value => new PersistedFieldValue
+            return (snapshot ?? new Dictionary<Guid, RecordSnapshot>())
+                .Values.Select(record => new PersistedRecordSnapshot
                 {
-                    ColumnLogicalName = value.Key,
-                    NormalizedValue = value.Value == null ? null : value.Value.NormalizedValue,
-                    DisplayValue = value.Value == null ? null : value.Value.DisplayValue
-                }).ToList()
-            }).ToList();
+                    RecordId = record.RecordId,
+                    RecordName = record.RecordName,
+                    ModifiedOn = record.ModifiedOn,
+                    ModifiedBy = record.ModifiedBy,
+                    Values = (record.Values ?? new Dictionary<string, FieldValue>())
+                        .Select(value => new PersistedFieldValue
+                        {
+                            ColumnLogicalName = value.Key,
+                            NormalizedValue =
+                                value.Value == null ? null : value.Value.NormalizedValue,
+                            DisplayValue = value.Value == null ? null : value.Value.DisplayValue,
+                        })
+                        .ToList(),
+                })
+                .ToList();
         }
 
-        private static Dictionary<Guid, RecordSnapshot> FromPersistedSnapshot(IEnumerable<PersistedRecordSnapshot> snapshot)
+        private static Dictionary<Guid, RecordSnapshot> FromPersistedSnapshot(
+            IEnumerable<PersistedRecordSnapshot> snapshot
+        )
         {
-            return (snapshot ?? Enumerable.Empty<PersistedRecordSnapshot>()).ToDictionary(record => record.RecordId, record => new RecordSnapshot
-            {
-                RecordId = record.RecordId,
-                RecordName = record.RecordName,
-                ModifiedOn = record.ModifiedOn,
-                ModifiedBy = record.ModifiedBy,
-                Values = (record.Values ?? new List<PersistedFieldValue>())
-                    .Where(value => !string.IsNullOrWhiteSpace(value.ColumnLogicalName))
-                    .ToDictionary(value => value.ColumnLogicalName, value => new FieldValue
-                    {
-                        NormalizedValue = value.NormalizedValue,
-                        DisplayValue = value.DisplayValue
-                    }, StringComparer.OrdinalIgnoreCase)
-            });
+            return (snapshot ?? Enumerable.Empty<PersistedRecordSnapshot>()).ToDictionary(
+                record => record.RecordId,
+                record => new RecordSnapshot
+                {
+                    RecordId = record.RecordId,
+                    RecordName = record.RecordName,
+                    ModifiedOn = record.ModifiedOn,
+                    ModifiedBy = record.ModifiedBy,
+                    Values = (record.Values ?? new List<PersistedFieldValue>())
+                        .Where(value => !string.IsNullOrWhiteSpace(value.ColumnLogicalName))
+                        .ToDictionary(
+                            value => value.ColumnLogicalName,
+                            value => new FieldValue
+                            {
+                                NormalizedValue = value.NormalizedValue,
+                                DisplayValue = value.DisplayValue,
+                            },
+                            StringComparer.OrdinalIgnoreCase
+                        ),
+                }
+            );
         }
 
         private void PersistMonitorConfigurations()
@@ -1483,15 +1796,22 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
             lock (monitorsLock)
             {
-                var otherEnvironmentMonitors = (mySettings.SavedMonitors ?? new List<MonitorDefinition>())
-                    .Where(definition => !string.Equals(
-                        NormalizeEnvironmentUrl(definition.EnvironmentUrl),
-                        NormalizeEnvironmentUrl(currentEnvironmentUrl),
-                        StringComparison.OrdinalIgnoreCase))
+                var otherEnvironmentMonitors = (
+                    mySettings.SavedMonitors ?? new List<MonitorDefinition>()
+                )
+                    .Where(definition =>
+                        !string.Equals(
+                            NormalizeEnvironmentUrl(definition.EnvironmentUrl),
+                            NormalizeEnvironmentUrl(currentEnvironmentUrl),
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
                     .ToList();
-                otherEnvironmentMonitors.AddRange(activeMonitors
-                    .Select(monitor => ToDefinition(monitor, true, true, true))
-                    .ToList());
+                otherEnvironmentMonitors.AddRange(
+                    activeMonitors
+                        .Select(monitor => ToDefinition(monitor, true, true, true))
+                        .ToList()
+                );
                 mySettings.SavedMonitors = otherEnvironmentMonitors;
             }
 
@@ -1500,7 +1820,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private void RestoreSavedMonitorsIfPossible()
         {
-            if (savedMonitorsRestored || mySettings == null || Service == null || string.IsNullOrWhiteSpace(currentEnvironmentUrl))
+            if (
+                savedMonitorsRestored
+                || mySettings == null
+                || Service == null
+                || string.IsNullOrWhiteSpace(currentEnvironmentUrl)
+            )
             {
                 return;
             }
@@ -1508,36 +1833,50 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             savedMonitorsRestored = true;
             RestoreRecentChangesIfPossible();
             var definitions = mySettings.SavedMonitors ?? new List<MonitorDefinition>();
-            var matchingDefinitions = definitions.Where(definition =>
-                string.Equals(
-                    NormalizeEnvironmentUrl(definition.EnvironmentUrl),
-                    NormalizeEnvironmentUrl(currentEnvironmentUrl),
-                    StringComparison.OrdinalIgnoreCase)).ToList();
+            var matchingDefinitions = definitions
+                .Where(definition =>
+                    string.Equals(
+                        NormalizeEnvironmentUrl(definition.EnvironmentUrl),
+                        NormalizeEnvironmentUrl(currentEnvironmentUrl),
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                .ToList();
 
             foreach (var definition in matchingDefinitions)
             {
-                if (string.IsNullOrWhiteSpace(definition.FetchXml) || definition.MonitoredColumns == null)
+                if (
+                    string.IsNullOrWhiteSpace(definition.FetchXml)
+                    || definition.MonitoredColumns == null
+                )
                 {
                     continue;
                 }
 
-                AddConfiguredMonitor(new MonitoringConfiguration
-                {
-                    MonitorName = EnsureUniqueMonitorName(definition.Name),
-                    Service = Service,
-                    EntityLogicalName = definition.EntityLogicalName,
-                    PrimaryIdAttribute = definition.PrimaryIdAttribute,
-                    PrimaryNameAttribute = definition.PrimaryNameAttribute,
-                    MonitoredColumns = definition.MonitoredColumns.ToList(),
-                    IntervalSeconds = Math.Max(1, definition.IntervalSeconds),
-                    FilterXml = definition.FilterXml,
-                    FetchXml = definition.FetchXml
-                }, "Restaurado", true, FromPersistedSnapshot(definition.LastSnapshot));
+                AddConfiguredMonitor(
+                    new MonitoringConfiguration
+                    {
+                        MonitorName = EnsureUniqueMonitorName(definition.Name),
+                        Service = Service,
+                        EntityLogicalName = definition.EntityLogicalName,
+                        PrimaryIdAttribute = definition.PrimaryIdAttribute,
+                        PrimaryNameAttribute = definition.PrimaryNameAttribute,
+                        MonitoredColumns = definition.MonitoredColumns.ToList(),
+                        IntervalSeconds = Math.Max(1, definition.IntervalSeconds),
+                        FilterXml = definition.FilterXml,
+                        FetchXml = definition.FetchXml,
+                    },
+                    "Restaurado",
+                    true,
+                    FromPersistedSnapshot(definition.LastSnapshot)
+                );
             }
 
             if (matchingDefinitions.Count > 0)
             {
-                AddLog($"{matchingDefinitions.Count} monitoramento(s) restaurado(s) como pausado(s).");
+                AddLog(
+                    $"{matchingDefinitions.Count} monitoramento(s) restaurado(s) como pausado(s)."
+                );
                 SetMonitoringControls(false);
             }
         }
@@ -1547,8 +1886,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             return string.IsNullOrWhiteSpace(url) ? string.Empty : url.Trim().TrimEnd('/');
         }
 
-        private void AddConfiguredMonitor(MonitoringConfiguration configuration, string source, bool isPaused,
-            Dictionary<Guid, RecordSnapshot> previousSnapshot = null)
+        private void AddConfiguredMonitor(
+            MonitoringConfiguration configuration,
+            string source,
+            bool isPaused,
+            Dictionary<Guid, RecordSnapshot> previousSnapshot = null
+        )
         {
             var monitor = new ActiveMonitor
             {
@@ -1560,7 +1903,7 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 CreatedOn = DateTime.Now,
                 Status = isPaused ? "Pausado" : "Iniciando",
                 IsPaused = isPaused,
-                NeedsBaselineReset = false
+                NeedsBaselineReset = false,
             };
 
             lock (monitorsLock)
@@ -1569,7 +1912,9 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             }
 
             AddActiveMonitorListItem(monitor);
-            AddLog($"{source}: {monitor.DisplayName} adicionado como {(isPaused ? "pausado" : "ativo")}.");
+            AddLog(
+                $"{source}: {monitor.DisplayName} adicionado como {(isPaused ? "pausado" : "ativo")}."
+            );
             if (!isPaused)
             {
                 StartMonitorTask(monitor);
@@ -1578,14 +1923,23 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private string EnsureUniqueMonitorName(string requestedName)
         {
-            var baseName = string.IsNullOrWhiteSpace(requestedName) ? "Monitor importado" : requestedName.Trim();
+            var baseName = string.IsNullOrWhiteSpace(requestedName)
+                ? "Monitor importado"
+                : requestedName.Trim();
             var candidate = baseName;
             var suffix = 2;
 
             lock (monitorsLock)
             {
-                while (activeMonitors.Any(monitor =>
-                    string.Equals(monitor.DisplayName, candidate, StringComparison.CurrentCultureIgnoreCase)))
+                while (
+                    activeMonitors.Any(monitor =>
+                        string.Equals(
+                            monitor.DisplayName,
+                            candidate,
+                            StringComparison.CurrentCultureIgnoreCase
+                        )
+                    )
+                )
                 {
                     candidate = $"{baseName} ({suffix++})";
                 }
@@ -1598,11 +1952,17 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         {
             if (lvActiveMonitors.SelectedItems.Count == 0)
             {
-                MessageBox.Show("Selecione ao menos um monitoramento para exportar.", "Nenhum monitoramento selecionado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "Selecione ao menos um monitoramento para exportar.",
+                    "Nenhum monitoramento selecionado",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
                 return;
             }
 
-            var selectedMonitors = lvActiveMonitors.SelectedItems.Cast<ListViewItem>()
+            var selectedMonitors = lvActiveMonitors
+                .SelectedItems.Cast<ListViewItem>()
                 .Select(item => item.Tag as ActiveMonitor)
                 .Where(monitor => monitor != null)
                 .ToList();
@@ -1617,7 +1977,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 .ToList();
             if (selectedMonitors.Count == 0)
             {
-                MessageBox.Show("Selecione ao menos um monitoramento para exportar.", "Nenhum monitoramento selecionado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "Selecione ao menos um monitoramento para exportar.",
+                    "Nenhum monitoramento selecionado",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
                 return;
             }
 
@@ -1625,52 +1990,79 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             {
                 SchemaVersion = 1,
                 ExportedAtUtc = DateTime.UtcNow,
-                Monitors = selectedMonitors.Select(monitor => ToDefinition(monitor, false, false, false)).ToList()
+                Monitors = selectedMonitors
+                    .Select(monitor => ToDefinition(monitor, false, false, false))
+                    .ToList(),
             };
 
-            using (var dialog = new SaveFileDialog
-            {
-                Filter = "Field Change Monitor (*.fcm.json)|*.fcm.json|JSON (*.json)|*.json",
-                FileName = selectedMonitors.Count == 1
-                    ? SanitizeFileName(selectedMonitors[0].DisplayName) + ".fcm.json"
-                    : "monitoramentos.fcm.json",
-                AddExtension = true,
-                DefaultExt = "fcm.json"
-            })
+            using (
+                var dialog = new SaveFileDialog
+                {
+                    Filter = "Field Change Monitor (*.fcm.json)|*.fcm.json|JSON (*.json)|*.json",
+                    FileName =
+                        selectedMonitors.Count == 1
+                            ? SanitizeFileName(selectedMonitors[0].DisplayName) + ".fcm.json"
+                            : "monitoramentos.fcm.json",
+                    AddExtension = true,
+                    DefaultExt = "fcm.json",
+                }
+            )
             {
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                 {
                     return;
                 }
 
-                File.WriteAllText(dialog.FileName, JsonConvert.SerializeObject(package, Formatting.Indented,
-                    new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }), Encoding.UTF8);
+                File.WriteAllText(
+                    dialog.FileName,
+                    JsonConvert.SerializeObject(
+                        package,
+                        Formatting.Indented,
+                        new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }
+                    ),
+                    Encoding.UTF8
+                );
                 SetStatus($"{selectedMonitors.Count} monitoramento(s) exportado(s).");
-                MessageBox.Show("Exportacao concluida.", "Monitoramentos exportados", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "Exportacao concluida.",
+                    "Monitoramentos exportados",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
             }
         }
 
         private static string SanitizeFileName(string value)
         {
             var invalidChars = Path.GetInvalidFileNameChars();
-            return new string((value ?? "monitoramento").Select(character =>
-                invalidChars.Contains(character) ? '_' : character).ToArray());
+            return new string(
+                (value ?? "monitoramento")
+                    .Select(character => invalidChars.Contains(character) ? '_' : character)
+                    .ToArray()
+            );
         }
 
         private void ImportMonitors()
         {
             if (Service == null)
             {
-                MessageBox.Show("Conecte-se a um ambiente antes de importar.", "Conexao obrigatoria", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "Conecte-se a um ambiente antes de importar.",
+                    "Conexao obrigatoria",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
 
             MonitorExportPackage package;
-            using (var dialog = new OpenFileDialog
-            {
-                Filter = "Field Change Monitor (*.fcm.json)|*.fcm.json|JSON (*.json)|*.json",
-                Multiselect = false
-            })
+            using (
+                var dialog = new OpenFileDialog
+                {
+                    Filter = "Field Change Monitor (*.fcm.json)|*.fcm.json|JSON (*.json)|*.json",
+                    Multiselect = false,
+                }
+            )
             {
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                 {
@@ -1679,124 +2071,194 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
                 try
                 {
-                    package = JsonConvert.DeserializeObject<MonitorExportPackage>(File.ReadAllText(dialog.FileName, Encoding.UTF8));
+                    package = JsonConvert.DeserializeObject<MonitorExportPackage>(
+                        File.ReadAllText(dialog.FileName, Encoding.UTF8)
+                    );
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Nao foi possivel ler o arquivo. " + ex.Message, "Importacao invalida", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(
+                        "Nao foi possivel ler o arquivo. " + ex.Message,
+                        "Importacao invalida",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error
+                    );
                     return;
                 }
             }
 
-            if (package == null || package.SchemaVersion != 1 || package.Monitors == null || package.Monitors.Count == 0)
+            if (
+                package == null
+                || package.SchemaVersion != 1
+                || package.Monitors == null
+                || package.Monitors.Count == 0
+            )
             {
-                MessageBox.Show("O arquivo nao possui um pacote compativel com a versao 1.", "Importacao invalida", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "O arquivo nao possui um pacote compativel com a versao 1.",
+                    "Importacao invalida",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
 
-            WorkAsync(new WorkAsyncInfo
-            {
-                Message = "Validando monitoramentos importados",
-                Work = (worker, args) =>
+            WorkAsync(
+                new WorkAsyncInfo
                 {
-                    var results = new List<ImportValidationResult>();
-                    foreach (var definition in package.Monitors)
+                    Message = "Validando monitoramentos importados",
+                    Work = (worker, args) =>
                     {
-                        var result = new ImportValidationResult { Definition = definition };
-                        try
+                        var results = new List<ImportValidationResult>();
+                        var metadataService = new DataverseMetadataService(Service);
+
+                        foreach (var definition in package.Monitors)
                         {
-                            string normalizedFilter;
-                            string filterError;
-                            if (!TryNormalizeFilterXml(definition.FilterXml, out normalizedFilter, out filterError))
+                            var result = new ImportValidationResult { Definition = definition };
+                            try
                             {
-                                throw new InvalidOperationException(filterError);
+                                string normalizedFilter;
+                                string filterError;
+                                if (
+                                    !TryNormalizeFilterXml(
+                                        definition.FilterXml,
+                                        out normalizedFilter,
+                                        out filterError
+                                    )
+                                )
+                                {
+                                    throw new InvalidOperationException(filterError);
+                                }
+
+                                var metadata = metadataService.GetEntity(
+                                    definition.EntityLogicalName,
+                                    EntityFilters.Attributes,
+                                    CancellationToken.None
+                                );
+                                var readableColumns = new HashSet<string>(
+                                    GetReadableAttributes(metadata)
+                                        .Select(attribute => attribute.LogicalName),
+                                    StringComparer.OrdinalIgnoreCase
+                                );
+                                var missingColumns = (
+                                    definition.MonitoredColumns ?? new List<string>()
+                                )
+                                    .Where(column => !readableColumns.Contains(column))
+                                    .ToList();
+                                if (missingColumns.Count > 0)
+                                {
+                                    throw new InvalidOperationException(
+                                        "Campos inexistentes ou sem leitura: "
+                                            + string.Join(", ", missingColumns)
+                                    );
+                                }
+                                if (
+                                    definition.MonitoredColumns == null
+                                    || definition.MonitoredColumns.Count == 0
+                                )
+                                {
+                                    throw new InvalidOperationException(
+                                        "Nenhum campo monitorado foi informado."
+                                    );
+                                }
+
+                                result.Metadata = metadata;
+                                result.NormalizedFilter = normalizedFilter;
+                            }
+                            catch (Exception ex)
+                            {
+                                result.Error = ex.Message;
                             }
 
-                            var response = (RetrieveEntityResponse)Service.Execute(new RetrieveEntityRequest
-                            {
-                                LogicalName = definition.EntityLogicalName,
-                                EntityFilters = EntityFilters.Attributes
-                            });
-                            var metadata = response.EntityMetadata;
-                            var readableColumns = new HashSet<string>(
-                                GetReadableAttributes(metadata).Select(attribute => attribute.LogicalName),
-                                StringComparer.OrdinalIgnoreCase);
-                            var missingColumns = (definition.MonitoredColumns ?? new List<string>())
-                                .Where(column => !readableColumns.Contains(column)).ToList();
-                            if (missingColumns.Count > 0)
-                            {
-                                throw new InvalidOperationException("Campos inexistentes ou sem leitura: " + string.Join(", ", missingColumns));
-                            }
-                            if (definition.MonitoredColumns == null || definition.MonitoredColumns.Count == 0)
-                            {
-                                throw new InvalidOperationException("Nenhum campo monitorado foi informado.");
-                            }
-
-                            result.Metadata = metadata;
-                            result.NormalizedFilter = normalizedFilter;
+                            results.Add(result);
                         }
-                        catch (Exception ex)
+
+                        args.Result = results;
+                    },
+                    PostWorkCallBack = args =>
+                    {
+                        if (args.Error != null)
                         {
-                            result.Error = ex.Message;
+                            MessageBox.Show(
+                                args.Error.Message,
+                                "Erro na importacao",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error
+                            );
+                            return;
                         }
 
-                        results.Add(result);
-                    }
-
-                    args.Result = results;
-                },
-                PostWorkCallBack = args =>
-                {
-                    if (args.Error != null)
-                    {
-                        MessageBox.Show(args.Error.Message, "Erro na importacao", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
-
-                    var results = (List<ImportValidationResult>)args.Result;
-                    var importedCount = 0;
-                    foreach (var result in results.Where(result => string.IsNullOrWhiteSpace(result.Error)))
-                    {
-                        var definition = result.Definition;
-                        AddConfiguredMonitor(new MonitoringConfiguration
+                        var results = (List<ImportValidationResult>)args.Result;
+                        var importedCount = 0;
+                        foreach (
+                            var result in results.Where(result =>
+                                string.IsNullOrWhiteSpace(result.Error)
+                            )
+                        )
                         {
-                            MonitorName = EnsureUniqueMonitorName(definition.Name),
-                            Service = Service,
-                            EntityLogicalName = definition.EntityLogicalName,
-                            PrimaryIdAttribute = result.Metadata.PrimaryIdAttribute,
-                            PrimaryNameAttribute = result.Metadata.PrimaryNameAttribute,
-                            MonitoredColumns = definition.MonitoredColumns.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
-                            IntervalSeconds = Math.Max(1, definition.IntervalSeconds),
-                            FilterXml = result.NormalizedFilter,
-                            FetchXml = BuildFetchXml(
-                                definition.EntityLogicalName,
-                                result.Metadata.PrimaryIdAttribute,
-                                result.Metadata.PrimaryNameAttribute,
-                                definition.MonitoredColumns,
-                                result.NormalizedFilter)
-                        }, "Importado", definition.IsPaused);
-                        importedCount++;
-                    }
+                            var definition = result.Definition;
+                            AddConfiguredMonitor(
+                                new MonitoringConfiguration
+                                {
+                                    MonitorName = EnsureUniqueMonitorName(definition.Name),
+                                    Service = Service,
+                                    EntityLogicalName = definition.EntityLogicalName,
+                                    PrimaryIdAttribute = result.Metadata.PrimaryIdAttribute,
+                                    PrimaryNameAttribute = result.Metadata.PrimaryNameAttribute,
+                                    MonitoredColumns = definition
+                                        .MonitoredColumns.Distinct(StringComparer.OrdinalIgnoreCase)
+                                        .ToList(),
+                                    IntervalSeconds = Math.Max(1, definition.IntervalSeconds),
+                                    FilterXml = result.NormalizedFilter,
+                                    FetchXml = BuildFetchXml(
+                                        definition.EntityLogicalName,
+                                        result.Metadata.PrimaryIdAttribute,
+                                        result.Metadata.PrimaryNameAttribute,
+                                        definition.MonitoredColumns,
+                                        result.NormalizedFilter
+                                    ),
+                                },
+                                "Importado",
+                                definition.IsPaused
+                            );
+                            importedCount++;
+                        }
 
-                    PersistMonitorConfigurations();
-                    SetMonitoringControls(false);
-                    var errors = results.Where(result => !string.IsNullOrWhiteSpace(result.Error))
-                        .Select(result => $"{result.Definition?.Name ?? "(sem nome)"}: {result.Error}")
-                        .ToList();
-                    var importedActiveCount = results.Count(result =>
-                        string.IsNullOrWhiteSpace(result.Error) && result.Definition != null && !result.Definition.IsPaused);
-                    var importedPausedCount = importedCount - importedActiveCount;
-                    var message = $"{importedCount} monitoramento(s) importado(s): " +
-                                  $"{importedActiveCount} ativo(s) e {importedPausedCount} pausado(s).";
-                    if (errors.Count > 0)
-                    {
-                        message += Environment.NewLine + Environment.NewLine + "Nao importados:" + Environment.NewLine +
-                                   string.Join(Environment.NewLine, errors);
-                    }
-                    MessageBox.Show(message, "Importacao concluida", MessageBoxButtons.OK,
-                        errors.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+                        PersistMonitorConfigurations();
+                        SetMonitoringControls(false);
+                        var errors = results
+                            .Where(result => !string.IsNullOrWhiteSpace(result.Error))
+                            .Select(result =>
+                                $"{result.Definition?.Name ?? "(sem nome)"}: {result.Error}"
+                            )
+                            .ToList();
+                        var importedActiveCount = results.Count(result =>
+                            string.IsNullOrWhiteSpace(result.Error)
+                            && result.Definition != null
+                            && !result.Definition.IsPaused
+                        );
+                        var importedPausedCount = importedCount - importedActiveCount;
+                        var message =
+                            $"{importedCount} monitoramento(s) importado(s): "
+                            + $"{importedActiveCount} ativo(s) e {importedPausedCount} pausado(s).";
+                        if (errors.Count > 0)
+                        {
+                            message +=
+                                Environment.NewLine
+                                + Environment.NewLine
+                                + "Nao importados:"
+                                + Environment.NewLine
+                                + string.Join(Environment.NewLine, errors);
+                        }
+                        MessageBox.Show(
+                            message,
+                            "Importacao concluida",
+                            MessageBoxButtons.OK,
+                            errors.Count == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning
+                        );
+                    },
                 }
-            });
+            );
         }
 
         private void StopMonitoring(bool addLog)
@@ -1834,12 +2296,17 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         {
             if (lvActiveMonitors.SelectedItems.Count == 0)
             {
-                MessageBox.Show("Selecione ao menos um monitoramento.", "Nenhum monitoramento selecionado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "Selecione ao menos um monitoramento.",
+                    "Nenhum monitoramento selecionado",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
                 return;
             }
 
-            var monitorsToStop = lvActiveMonitors.SelectedItems
-                .Cast<ListViewItem>()
+            var monitorsToStop = lvActiveMonitors
+                .SelectedItems.Cast<ListViewItem>()
                 .Select(item => item.Tag as ActiveMonitor)
                 .Where(monitor => monitor != null)
                 .ToList();
@@ -1858,10 +2325,18 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 return;
             }
 
-            var message = monitorsToStop.Count == 1
-                ? $"Deseja remover o monitoramento '{monitorsToStop[0].DisplayName}'?"
-                : $"Deseja remover os {monitorsToStop.Count} monitoramentos selecionados?";
-            if (MessageBox.Show(message, "Remover monitoramento", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+            var message =
+                monitorsToStop.Count == 1
+                    ? $"Deseja remover o monitoramento '{monitorsToStop[0].DisplayName}'?"
+                    : $"Deseja remover os {monitorsToStop.Count} monitoramentos selecionados?";
+            if (
+                MessageBox.Show(
+                    message,
+                    "Remover monitoramento",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning
+                ) != DialogResult.Yes
+            )
             {
                 return;
             }
@@ -1905,9 +2380,15 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             var item = new ListViewItem(monitor.DisplayName);
             item.SubItems.Add(monitor.Configuration.EntityLogicalName);
             item.SubItems.Add(string.Join(", ", monitor.Configuration.MonitoredColumns));
-            item.SubItems.Add(monitor.Configuration.IntervalSeconds.ToString(CultureInfo.InvariantCulture));
+            item.SubItems.Add(
+                monitor.Configuration.IntervalSeconds.ToString(CultureInfo.InvariantCulture)
+            );
             item.SubItems.Add(monitor.Status);
-            item.SubItems.Add(string.IsNullOrWhiteSpace(monitor.Configuration.FilterXml) ? "(sem filtro)" : monitor.Configuration.FilterXml);
+            item.SubItems.Add(
+                string.IsNullOrWhiteSpace(monitor.Configuration.FilterXml)
+                    ? "(sem filtro)"
+                    : monitor.Configuration.FilterXml
+            );
             item.Tag = monitor;
             monitor.ListViewItem = item;
             lvActiveMonitors.Items.Add(item);
@@ -1927,7 +2408,10 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         {
             allColumnItems.Clear();
             checkedMonitoredColumns.Clear();
-            allColumnItems.AddRange(GetReadableAttributes(entityMetadata).Select(attribute => new AttributeListItem(attribute)));
+            allColumnItems.AddRange(
+                GetReadableAttributes(entityMetadata)
+                    .Select(attribute => new AttributeListItem(attribute))
+            );
             txtColumnSearch.Clear();
             ApplyColumnFilter();
         }
@@ -1935,7 +2419,10 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         private void PopulateConditionAttributes(EntityMetadata entityMetadata)
         {
             allConditionAttributeItems.Clear();
-            allConditionAttributeItems.AddRange(GetReadableAttributes(entityMetadata).Select(attribute => new AttributeListItem(attribute)));
+            allConditionAttributeItems.AddRange(
+                GetReadableAttributes(entityMetadata)
+                    .Select(attribute => new AttributeListItem(attribute))
+            );
             txtConditionFieldSearch.Clear();
             ApplyConditionFieldFilter();
             UpdateConditionValueHint();
@@ -1943,8 +2430,11 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private static List<AttributeMetadata> GetReadableAttributes(EntityMetadata entityMetadata)
         {
-            return entityMetadata.Attributes
-                .Where(attribute => attribute.IsValidForRead == true && !string.IsNullOrWhiteSpace(attribute.LogicalName))
+            return entityMetadata
+                .Attributes.Where(attribute =>
+                    attribute.IsValidForRead == true
+                    && !string.IsNullOrWhiteSpace(attribute.LogicalName)
+                )
                 .OrderBy(GetAttributeDisplayName)
                 .ThenBy(attribute => attribute.LogicalName)
                 .ToList();
@@ -1996,8 +2486,13 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private void ApplyConditionFieldFilter()
         {
-            var selectedLogicalName = (cboConditionAttribute.SelectedItem as AttributeListItem)?.LogicalName;
-            var searchText = txtConditionFieldSearch == null ? string.Empty : txtConditionFieldSearch.Text.Trim();
+            var selectedLogicalName = (
+                cboConditionAttribute.SelectedItem as AttributeListItem
+            )?.LogicalName;
+            var searchText =
+                txtConditionFieldSearch == null
+                    ? string.Empty
+                    : txtConditionFieldSearch.Text.Trim();
             var filteredItems = allConditionAttributeItems
                 .Where(item => MatchesSearch(item, searchText))
                 .ToList();
@@ -2024,7 +2519,14 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 for (var index = 0; index < cboConditionAttribute.Items.Count; index++)
                 {
                     var item = cboConditionAttribute.Items[index] as AttributeListItem;
-                    if (item != null && string.Equals(item.LogicalName, selectedLogicalName, StringComparison.OrdinalIgnoreCase))
+                    if (
+                        item != null
+                        && string.Equals(
+                            item.LogicalName,
+                            selectedLogicalName,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
                     {
                         selectedIndex = index;
                         break;
@@ -2038,9 +2540,11 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         private static bool MatchesSearch(AttributeListItem item, string searchText)
         {
             return item != null
-                && (string.IsNullOrWhiteSpace(searchText)
+                && (
+                    string.IsNullOrWhiteSpace(searchText)
                     || item.LogicalName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0
-                    || item.DisplayName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0);
+                    || item.DisplayName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0
+                );
         }
 
         private void PopulateConditionOperators()
@@ -2052,39 +2556,101 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
             cboConditionOperator.Items.Clear();
             cboConditionOperator.Items.Add(new ConditionOperatorItem("eq", "Igual a", true, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("ne", "Diferente de", true, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("like", "Contem texto (like)", true, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("not-like", "Nao contem texto", true, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("null", "Sem valor", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("not-null", "Com valor", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("gt", "Maior que", true, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("ge", "Maior ou igual", true, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("lt", "Menor que", true, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("le", "Menor ou igual", true, false));
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("ne", "Diferente de", true, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("like", "Contem texto (like)", true, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("not-like", "Nao contem texto", true, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("null", "Sem valor", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("not-null", "Com valor", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("gt", "Maior que", true, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("ge", "Maior ou igual", true, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("lt", "Menor que", true, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("le", "Menor ou igual", true, false)
+            );
             cboConditionOperator.Items.Add(new ConditionOperatorItem("on", "Na data", true, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("on-or-after", "Na data ou depois", true, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("on-or-before", "Na data ou antes", true, false));
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("on-or-after", "Na data ou depois", true, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("on-or-before", "Na data ou antes", true, false)
+            );
             cboConditionOperator.Items.Add(new ConditionOperatorItem("in", "Esta em", true, true));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("not-in", "Nao esta em", true, true));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("between", "Entre", true, true));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("not-between", "Fora do intervalo", true, true));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("last-x-days", "Ultimos X dias", true, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("next-x-days", "Proximos X dias", true, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("olderthan-x-days", "Mais antigo que X dias", true, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("today", "Hoje", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("yesterday", "Ontem", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("tomorrow", "Amanha", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("this-week", "Esta semana", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("last-week", "Semana passada", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("next-week", "Proxima semana", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("this-month", "Este mes", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("last-month", "Mes passado", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("next-month", "Proximo mes", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("this-year", "Este ano", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("last-year", "Ano passado", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("next-year", "Proximo ano", false, false));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("contain-values", "Contem valores", true, true));
-            cboConditionOperator.Items.Add(new ConditionOperatorItem("not-contain-values", "Nao contem valores", true, true));
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("not-in", "Nao esta em", true, true)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("between", "Entre", true, true)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("not-between", "Fora do intervalo", true, true)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("last-x-days", "Ultimos X dias", true, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("next-x-days", "Proximos X dias", true, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("olderthan-x-days", "Mais antigo que X dias", true, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("today", "Hoje", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("yesterday", "Ontem", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("tomorrow", "Amanha", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("this-week", "Esta semana", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("last-week", "Semana passada", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("next-week", "Proxima semana", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("this-month", "Este mes", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("last-month", "Mes passado", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("next-month", "Proximo mes", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("this-year", "Este ano", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("last-year", "Ano passado", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("next-year", "Proximo ano", false, false)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("contain-values", "Contem valores", true, true)
+            );
+            cboConditionOperator.Items.Add(
+                new ConditionOperatorItem("not-contain-values", "Nao contem valores", true, true)
+            );
             cboConditionOperator.SelectedIndex = 0;
 
             UpdateConditionValueState();
@@ -2097,13 +2663,23 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
             if (attribute == null)
             {
-                MessageBox.Show("Carregue a entidade e selecione um campo para a condicao.", "Campo obrigatorio", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "Carregue a entidade e selecione um campo para a condicao.",
+                    "Campo obrigatorio",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
 
             if (conditionOperator == null)
             {
-                MessageBox.Show("Selecione um operador para a condicao.", "Operador obrigatorio", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "Selecione um operador para a condicao.",
+                    "Operador obrigatorio",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
 
@@ -2121,25 +2697,43 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
                 if (values.Count == 0)
                 {
-                    MessageBox.Show("Informe o valor da condicao.", "Valor obrigatorio", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show(
+                        "Informe o valor da condicao.",
+                        "Valor obrigatorio",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
                     return;
                 }
 
-                if ((conditionOperator.Operator == "between" || conditionOperator.Operator == "not-between") && values.Count != 2)
+                if (
+                    (
+                        conditionOperator.Operator == "between"
+                        || conditionOperator.Operator == "not-between"
+                    )
+                    && values.Count != 2
+                )
                 {
-                    MessageBox.Show("O operador selecionado precisa de exatamente dois valores.", "Valores invalidos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show(
+                        "O operador selecionado precisa de exatamente dois valores.",
+                        "Valores invalidos",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
                     return;
                 }
             }
 
-            filterConditions.Add(new FilterCondition
-            {
-                AttributeLogicalName = attribute.LogicalName,
-                AttributeDisplayName = attribute.DisplayName,
-                Operator = conditionOperator.Operator,
-                OperatorDisplayName = conditionOperator.DisplayName,
-                Values = values
-            });
+            filterConditions.Add(
+                new FilterCondition
+                {
+                    AttributeLogicalName = attribute.LogicalName,
+                    AttributeDisplayName = attribute.DisplayName,
+                    Operator = conditionOperator.Operator,
+                    OperatorDisplayName = conditionOperator.DisplayName,
+                    Values = values,
+                }
+            );
 
             RefreshConditionList();
             SyncFilterXmlFromConditions();
@@ -2157,7 +2751,10 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 .ToList();
         }
 
-        private static string NormalizeConditionBuilderValue(AttributeMetadata attribute, string value)
+        private static string NormalizeConditionBuilderValue(
+            AttributeMetadata attribute,
+            string value
+        )
         {
             if (attribute == null || value == null)
             {
@@ -2208,13 +2805,19 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             if (booleanAttribute != null && booleanAttribute.OptionSet != null)
             {
                 var trueLabel = GetOptionLabel(booleanAttribute.OptionSet.TrueOption);
-                if (!string.IsNullOrWhiteSpace(trueLabel) && string.Equals(trueLabel, value, StringComparison.CurrentCultureIgnoreCase))
+                if (
+                    !string.IsNullOrWhiteSpace(trueLabel)
+                    && string.Equals(trueLabel, value, StringComparison.CurrentCultureIgnoreCase)
+                )
                 {
                     return "1";
                 }
 
                 var falseLabel = GetOptionLabel(booleanAttribute.OptionSet.FalseOption);
-                if (!string.IsNullOrWhiteSpace(falseLabel) && string.Equals(falseLabel, value, StringComparison.CurrentCultureIgnoreCase))
+                if (
+                    !string.IsNullOrWhiteSpace(falseLabel)
+                    && string.Equals(falseLabel, value, StringComparison.CurrentCultureIgnoreCase)
+                )
                 {
                     return "0";
                 }
@@ -2229,7 +2832,11 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             foreach (var option in enumAttribute.OptionSet.Options)
             {
                 var optionLabel = GetOptionLabel(option);
-                if (!string.IsNullOrWhiteSpace(optionLabel) && string.Equals(optionLabel, value, StringComparison.CurrentCultureIgnoreCase) && option.Value.HasValue)
+                if (
+                    !string.IsNullOrWhiteSpace(optionLabel)
+                    && string.Equals(optionLabel, value, StringComparison.CurrentCultureIgnoreCase)
+                    && option.Value.HasValue
+                )
                 {
                     return option.Value.Value.ToString(CultureInfo.InvariantCulture);
                 }
@@ -2250,7 +2857,9 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 return option.Label.UserLocalizedLabel.Label;
             }
 
-            return option.Label.LocalizedLabels.Count > 0 ? option.Label.LocalizedLabels[0].Label : null;
+            return option.Label.LocalizedLabels.Count > 0
+                ? option.Label.LocalizedLabels[0].Label
+                : null;
         }
 
         private void RemoveSelectedConditions()
@@ -2260,8 +2869,8 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 return;
             }
 
-            var conditionsToRemove = lvConditions.SelectedItems
-                .Cast<ListViewItem>()
+            var conditionsToRemove = lvConditions
+                .SelectedItems.Cast<ListViewItem>()
                 .Select(item => item.Tag as FilterCondition)
                 .Where(condition => condition != null)
                 .ToList();
@@ -2312,7 +2921,8 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private XElement BuildFilterElementFromConditions()
         {
-            var filterType = cboFilterType.SelectedItem == null ? "and" : cboFilterType.SelectedItem.ToString();
+            var filterType =
+                cboFilterType.SelectedItem == null ? "and" : cboFilterType.SelectedItem.ToString();
             var filter = new XElement("filter", new XAttribute("type", filterType));
 
             foreach (var condition in filterConditions)
@@ -2325,16 +2935,24 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private static XElement BuildConditionElement(FilterCondition condition)
         {
-            var element = new XElement("condition",
+            var element = new XElement(
+                "condition",
                 new XAttribute("attribute", condition.AttributeLogicalName),
-                new XAttribute("operator", condition.Operator));
+                new XAttribute("operator", condition.Operator)
+            );
 
             if (condition.Values == null || condition.Values.Count == 0)
             {
                 return element;
             }
 
-            if (condition.Values.Count == 1 && condition.Operator != "in" && condition.Operator != "not-in" && condition.Operator != "contain-values" && condition.Operator != "not-contain-values")
+            if (
+                condition.Values.Count == 1
+                && condition.Operator != "in"
+                && condition.Operator != "not-in"
+                && condition.Operator != "contain-values"
+                && condition.Operator != "not-contain-values"
+            )
             {
                 element.SetAttributeValue("value", condition.Values[0]);
                 return element;
@@ -2377,7 +2995,10 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             {
                 using (var picker = new LookupValuePickerForm(Service, lookupAttribute))
                 {
-                    if (picker.ShowDialog(this) == DialogResult.OK && !string.IsNullOrWhiteSpace(picker.SelectedValue))
+                    if (
+                        picker.ShowDialog(this) == DialogResult.OK
+                        && !string.IsNullOrWhiteSpace(picker.SelectedValue)
+                    )
                     {
                         txtConditionValue.Text = picker.SelectedValue;
                     }
@@ -2388,9 +3009,17 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
             if (IsOptionSetAttribute(attribute.Metadata))
             {
-                using (var picker = new OptionSetValuePickerForm(attribute.Metadata, conditionOperator.AllowsMultipleValues))
+                using (
+                    var picker = new OptionSetValuePickerForm(
+                        attribute.Metadata,
+                        conditionOperator.AllowsMultipleValues
+                    )
+                )
                 {
-                    if (picker.ShowDialog(this) == DialogResult.OK && picker.SelectedValues.Count > 0)
+                    if (
+                        picker.ShowDialog(this) == DialogResult.OK
+                        && picker.SelectedValues.Count > 0
+                    )
                     {
                         txtConditionValue.Text = string.Join(", ", picker.SelectedValues);
                     }
@@ -2416,10 +3045,15 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 return;
             }
 
-            var typeHint = attribute == null ? "Selecione um campo carregado da entidade." : GetValueHint(attribute.Metadata);
+            var typeHint =
+                attribute == null
+                    ? "Selecione um campo carregado da entidade."
+                    : GetValueHint(attribute.Metadata);
             if (attribute != null)
             {
-                canPickValue = attribute.Metadata is LookupAttributeMetadata || IsOptionSetAttribute(attribute.Metadata);
+                canPickValue =
+                    attribute.Metadata is LookupAttributeMetadata
+                    || IsOptionSetAttribute(attribute.Metadata);
             }
 
             if (conditionOperator != null && conditionOperator.AllowsMultipleValues)
@@ -2471,7 +3105,11 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             }
         }
 
-        private static bool TryNormalizeFilterXml(string filterText, out string normalizedFilter, out string error)
+        private static bool TryNormalizeFilterXml(
+            string filterText,
+            out string normalizedFilter,
+            out string error
+        )
         {
             normalizedFilter = string.Empty;
             error = null;
@@ -2486,15 +3124,31 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             try
             {
                 var element = XElement.Parse(trimmedFilter);
-                if (string.Equals(element.Name.LocalName, "filter", StringComparison.OrdinalIgnoreCase))
+                if (
+                    string.Equals(
+                        element.Name.LocalName,
+                        "filter",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
                 {
                     normalizedFilter = element.ToString(SaveOptions.DisableFormatting);
                     return true;
                 }
 
-                if (string.Equals(element.Name.LocalName, "condition", StringComparison.OrdinalIgnoreCase))
+                if (
+                    string.Equals(
+                        element.Name.LocalName,
+                        "condition",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
                 {
-                    normalizedFilter = new XElement("filter", new XAttribute("type", "and"), element).ToString(SaveOptions.DisableFormatting);
+                    normalizedFilter = new XElement(
+                        "filter",
+                        new XAttribute("type", "and"),
+                        element
+                    ).ToString(SaveOptions.DisableFormatting);
                     return true;
                 }
             }
@@ -2511,12 +3165,20 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             }
             catch (Exception ex)
             {
-                error = "Informe um filtro FetchXML valido. Use <filter>...</filter> ou uma ou mais tags <condition ... />. Detalhe: " + ex.Message;
+                error =
+                    "Informe um filtro FetchXML valido. Use <filter>...</filter> ou uma ou mais tags <condition ... />. Detalhe: "
+                    + ex.Message;
                 return false;
             }
         }
 
-        private static string BuildFetchXml(string entityLogicalName, string primaryIdAttribute, string primaryNameAttribute, List<string> monitoredColumns, string filterXml)
+        private static string BuildFetchXml(
+            string entityLogicalName,
+            string primaryIdAttribute,
+            string primaryNameAttribute,
+            List<string> monitoredColumns,
+            string filterXml
+        )
         {
             var attributes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             attributes.Add(primaryIdAttribute);
@@ -2534,12 +3196,22 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             }
 
             var builder = new StringBuilder();
-            builder.Append("<fetch version=\"1.0\" mapping=\"logical\" no-lock=\"true\" count=\"5000\">");
-            builder.AppendFormat(CultureInfo.InvariantCulture, "<entity name=\"{0}\">", EscapeXml(entityLogicalName));
+            builder.Append(
+                "<fetch version=\"1.0\" mapping=\"logical\" no-lock=\"true\" count=\"5000\">"
+            );
+            builder.AppendFormat(
+                CultureInfo.InvariantCulture,
+                "<entity name=\"{0}\">",
+                EscapeXml(entityLogicalName)
+            );
 
             foreach (var attribute in attributes)
             {
-                builder.AppendFormat(CultureInfo.InvariantCulture, "<attribute name=\"{0}\" />", EscapeXml(attribute));
+                builder.AppendFormat(
+                    CultureInfo.InvariantCulture,
+                    "<attribute name=\"{0}\" />",
+                    EscapeXml(attribute)
+                );
             }
 
             if (!string.IsNullOrWhiteSpace(filterXml))
@@ -2577,37 +3249,27 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private static string GetAttributeDisplayName(AttributeMetadata attribute)
         {
-            var label = attribute.DisplayName != null && attribute.DisplayName.UserLocalizedLabel != null
-                ? attribute.DisplayName.UserLocalizedLabel.Label
-                : null;
-
-            if (string.IsNullOrWhiteSpace(label) && attribute.DisplayName != null && attribute.DisplayName.LocalizedLabels.Count > 0)
-            {
-                label = attribute.DisplayName.LocalizedLabels[0].Label;
-            }
-
-            return string.IsNullOrWhiteSpace(label) ? attribute.LogicalName : label;
+            return MetadataLabelResolver.GetDisplayName(attribute);
         }
 
         private static string GetEntityDisplayName(EntityMetadata entity)
         {
-            var label = entity.DisplayName != null && entity.DisplayName.UserLocalizedLabel != null
-                ? entity.DisplayName.UserLocalizedLabel.Label
-                : null;
-
-            if (string.IsNullOrWhiteSpace(label) && entity.DisplayName != null && entity.DisplayName.LocalizedLabels.Count > 0)
-            {
-                label = entity.DisplayName.LocalizedLabels[0].Label;
-            }
-
-            return string.IsNullOrWhiteSpace(label) ? entity.LogicalName : label;
+            return MetadataLabelResolver.GetDisplayName(entity);
         }
 
         private static string GetRecordName(Entity entity, string primaryNameAttribute)
         {
-            if (!string.IsNullOrWhiteSpace(primaryNameAttribute) && entity.Contains(primaryNameAttribute))
+            if (
+                !string.IsNullOrWhiteSpace(primaryNameAttribute)
+                && entity.Contains(primaryNameAttribute)
+            )
             {
-                var value = FormatValue(entity[primaryNameAttribute], entity.FormattedValues.Contains(primaryNameAttribute) ? entity.FormattedValues[primaryNameAttribute] : null);
+                var value = FormatValue(
+                    entity[primaryNameAttribute],
+                    entity.FormattedValues.Contains(primaryNameAttribute)
+                        ? entity.FormattedValues[primaryNameAttribute]
+                        : null
+                );
                 if (!string.IsNullOrWhiteSpace(value) && value != "(vazio)")
                 {
                     return value;
@@ -2639,7 +3301,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             var optionSetValueCollection = value as OptionSetValueCollection;
             if (optionSetValueCollection != null)
             {
-                return string.Join(",", optionSetValueCollection.Select(item => item.Value.ToString(CultureInfo.InvariantCulture)).OrderBy(item => item));
+                return string.Join(
+                    ",",
+                    optionSetValueCollection
+                        .Select(item => item.Value.ToString(CultureInfo.InvariantCulture))
+                        .OrderBy(item => item)
+                );
             }
 
             var money = value as Money;
@@ -2656,7 +3323,9 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
             if (value is DateTime)
             {
-                return ((DateTime)value).ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
+                return ((DateTime)value)
+                    .ToUniversalTime()
+                    .ToString("O", CultureInfo.InvariantCulture);
             }
 
             if (value is bool)
@@ -2693,7 +3362,9 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             var entityReference = value as EntityReference;
             if (entityReference != null)
             {
-                return string.IsNullOrWhiteSpace(entityReference.Name) ? entityReference.Id.ToString("D") : entityReference.Name;
+                return string.IsNullOrWhiteSpace(entityReference.Name)
+                    ? entityReference.Id.ToString("D")
+                    : entityReference.Name;
             }
 
             var money = value as Money;
@@ -2711,7 +3382,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             var optionSetValueCollection = value as OptionSetValueCollection;
             if (optionSetValueCollection != null)
             {
-                return string.Join(", ", optionSetValueCollection.Select(item => item.Value.ToString(CultureInfo.CurrentCulture)));
+                return string.Join(
+                    ", ",
+                    optionSetValueCollection.Select(item =>
+                        item.Value.ToString(CultureInfo.CurrentCulture)
+                    )
+                );
             }
 
             if (value is DateTime)
@@ -2776,24 +3452,53 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             var xmlToValidate = txtFilterXml.Text;
             try
             {
-                if (!string.IsNullOrWhiteSpace(xmlToValidate) &&
-                    xmlToValidate.TrimStart().StartsWith("<fetch", StringComparison.OrdinalIgnoreCase))
+                if (
+                    !string.IsNullOrWhiteSpace(xmlToValidate)
+                    && xmlToValidate
+                        .TrimStart()
+                        .StartsWith("<fetch", StringComparison.OrdinalIgnoreCase)
+                )
                 {
                     var document = XElement.Parse(xmlToValidate);
-                    if (string.Equals(document.Name.LocalName, "fetch", StringComparison.OrdinalIgnoreCase))
+                    if (
+                        string.Equals(
+                            document.Name.LocalName,
+                            "fetch",
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
                     {
-                        var entity = document.Elements().FirstOrDefault(element =>
-                            string.Equals(element.Name.LocalName, "entity", StringComparison.OrdinalIgnoreCase));
+                        var entity = document
+                            .Elements()
+                            .FirstOrDefault(element =>
+                                string.Equals(
+                                    element.Name.LocalName,
+                                    "entity",
+                                    StringComparison.OrdinalIgnoreCase
+                                )
+                            );
                         if (entity == null)
                         {
-                            throw new InvalidOperationException("O FetchXML nao possui uma tag entity.");
+                            throw new InvalidOperationException(
+                                "O FetchXML nao possui uma tag entity."
+                            );
                         }
 
-                        var filters = entity.Elements().Where(element =>
-                            string.Equals(element.Name.LocalName, "filter", StringComparison.OrdinalIgnoreCase)).ToList();
+                        var filters = entity
+                            .Elements()
+                            .Where(element =>
+                                string.Equals(
+                                    element.Name.LocalName,
+                                    "filter",
+                                    StringComparison.OrdinalIgnoreCase
+                                )
+                            )
+                            .ToList();
                         if (filters.Count > 1)
                         {
-                            throw new InvalidOperationException("O construtor visual aceita apenas um filtro principal.");
+                            throw new InvalidOperationException(
+                                "O construtor visual aceita apenas um filtro principal."
+                            );
                         }
 
                         xmlToValidate = filters.Count == 0 ? string.Empty : filters[0].ToString();
@@ -2802,13 +3507,23 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             }
             catch (Exception ex)
             {
-                MessageBox.Show("O FetchXML nao e valido. " + ex.Message, "FetchXML invalido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    "O FetchXML nao e valido. " + ex.Message,
+                    "FetchXML invalido",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
 
             if (!TryNormalizeFilterXml(xmlToValidate, out normalizedFilter, out error))
             {
-                MessageBox.Show(error, "FetchXML invalido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    error,
+                    "FetchXML invalido",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
 
@@ -2826,57 +3541,90 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 var filter = XElement.Parse(normalizedFilter);
                 if (filter.Elements("filter").Any() || filter.Descendants("filter").Any())
                 {
-                    throw new InvalidOperationException("Filtros aninhados nao podem ser editados pelo construtor visual.");
+                    throw new InvalidOperationException(
+                        "Filtros aninhados nao podem ser editados pelo construtor visual."
+                    );
                 }
 
                 var parsedConditions = new List<FilterCondition>();
                 foreach (var conditionElement in filter.Elements("condition"))
                 {
-                    var unsupportedAttributes = conditionElement.Attributes()
-                        .Where(attribute => attribute.Name.LocalName != "attribute" &&
-                                            attribute.Name.LocalName != "operator" &&
-                                            attribute.Name.LocalName != "value")
+                    var unsupportedAttributes = conditionElement
+                        .Attributes()
+                        .Where(attribute =>
+                            attribute.Name.LocalName != "attribute"
+                            && attribute.Name.LocalName != "operator"
+                            && attribute.Name.LocalName != "value"
+                        )
                         .Select(attribute => attribute.Name.LocalName)
                         .ToList();
                     if (unsupportedAttributes.Count > 0)
                     {
                         throw new InvalidOperationException(
-                            "A condicao possui propriedades nao suportadas pelo construtor visual: " +
-                            string.Join(", ", unsupportedAttributes));
+                            "A condicao possui propriedades nao suportadas pelo construtor visual: "
+                                + string.Join(", ", unsupportedAttributes)
+                        );
                     }
 
                     var attributeLogicalName = (string)conditionElement.Attribute("attribute");
                     var operatorName = (string)conditionElement.Attribute("operator");
-                    if (string.IsNullOrWhiteSpace(attributeLogicalName) || string.IsNullOrWhiteSpace(operatorName))
+                    if (
+                        string.IsNullOrWhiteSpace(attributeLogicalName)
+                        || string.IsNullOrWhiteSpace(operatorName)
+                    )
                     {
-                        throw new InvalidOperationException("Cada condition deve possuir attribute e operator.");
+                        throw new InvalidOperationException(
+                            "Cada condition deve possuir attribute e operator."
+                        );
                     }
 
                     var attributeItem = allConditionAttributeItems.FirstOrDefault(item =>
-                        string.Equals(item.LogicalName, attributeLogicalName, StringComparison.OrdinalIgnoreCase));
-                    var operatorItem = cboConditionOperator.Items.Cast<object>()
+                        string.Equals(
+                            item.LogicalName,
+                            attributeLogicalName,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    );
+                    var operatorItem = cboConditionOperator
+                        .Items.Cast<object>()
                         .OfType<ConditionOperatorItem>()
-                        .FirstOrDefault(item => string.Equals(item.Operator, operatorName, StringComparison.OrdinalIgnoreCase));
+                        .FirstOrDefault(item =>
+                            string.Equals(
+                                item.Operator,
+                                operatorName,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        );
                     if (operatorItem == null)
                     {
-                        throw new InvalidOperationException($"O operador '{operatorName}' nao e suportado pelo construtor visual.");
+                        throw new InvalidOperationException(
+                            $"O operador '{operatorName}' nao e suportado pelo construtor visual."
+                        );
                     }
 
-                    var values = conditionElement.Elements("value").Select(value => value.Value).ToList();
+                    var values = conditionElement
+                        .Elements("value")
+                        .Select(value => value.Value)
+                        .ToList();
                     var valueAttribute = (string)conditionElement.Attribute("value");
                     if (!string.IsNullOrWhiteSpace(valueAttribute))
                     {
                         values.Insert(0, valueAttribute);
                     }
 
-                    parsedConditions.Add(new FilterCondition
-                    {
-                        AttributeLogicalName = attributeLogicalName,
-                        AttributeDisplayName = attributeItem == null ? attributeLogicalName : attributeItem.DisplayName,
-                        Operator = operatorItem.Operator,
-                        OperatorDisplayName = operatorItem.DisplayName,
-                        Values = values
-                    });
+                    parsedConditions.Add(
+                        new FilterCondition
+                        {
+                            AttributeLogicalName = attributeLogicalName,
+                            AttributeDisplayName =
+                                attributeItem == null
+                                    ? attributeLogicalName
+                                    : attributeItem.DisplayName,
+                            Operator = operatorItem.Operator,
+                            OperatorDisplayName = operatorItem.DisplayName,
+                            Values = values,
+                        }
+                    );
                 }
 
                 filterConditions.Clear();
@@ -2887,15 +3635,22 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 RefreshConditionList();
                 UpdateConfigurationSummary();
                 SetStatus("FetchXML validado e carregado no construtor visual.");
-                MessageBox.Show("FetchXML valido. As condicoes foram atualizadas no grid.", "Filtro salvo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "FetchXML valido. As condicoes foram atualizadas no grid.",
+                    "Filtro salvo",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
             }
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    "O XML e valido, mas nao pode ser representado pelo construtor visual sem perder informacoes. " + ex.Message,
+                    "O XML e valido, mas nao pode ser representado pelo construtor visual sem perder informacoes. "
+                        + ex.Message,
                     "Filtro nao suportado",
                     MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                    MessageBoxIcon.Warning
+                );
             }
         }
 
@@ -2919,11 +3674,16 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             lblSelectedCount.Text = $"{selectedCount} selecionado(s)";
             lblConfigurationSummary.Text =
                 $"{monitorName}  •  {entityName}  •  {selectedCount} campo(s)  •  a cada {nudIntervalSeconds.Value:0} segundo(s)  •  {conditionCount} condição(ões)";
-            lblConfigurationReady.Text = editingMonitor != null
-                ? $"Editando: {editingMonitor.DisplayName}"
-                : (selectedCount > 0 && !string.IsNullOrWhiteSpace(selectedEntityLogicalName) && !string.IsNullOrWhiteSpace(txtMonitorName.Text)
-                    ? "Pronto para monitorar"
-                    : "Configure o monitoramento");
+            lblConfigurationReady.Text =
+                editingMonitor != null
+                    ? $"Editando: {editingMonitor.DisplayName}"
+                    : (
+                        selectedCount > 0
+                        && !string.IsNullOrWhiteSpace(selectedEntityLogicalName)
+                        && !string.IsNullOrWhiteSpace(txtMonitorName.Text)
+                            ? "Pronto para monitorar"
+                            : "Configure o monitoramento"
+                    );
         }
 
         private void ApplyVisualTheme()
@@ -2952,8 +3712,14 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                     control.Font = new Font("Segoe UI Semibold", 9.5F);
                     control.BackColor = Color.White;
                 }
-                else if (control is TextBox || control is ComboBox || control is NumericUpDown ||
-                         control is CheckedListBox || control is ListView || control is ListBox)
+                else if (
+                    control is TextBox
+                    || control is ComboBox
+                    || control is NumericUpDown
+                    || control is CheckedListBox
+                    || control is ListView
+                    || control is ListBox
+                )
                 {
                     control.Font = new Font("Segoe UI", 9F);
                     control.BackColor = Color.White;
@@ -2967,12 +3733,17 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         {
             if (lvActiveMonitors.SelectedItems.Count == 0)
             {
-                MessageBox.Show("Selecione ao menos um monitoramento.", "Nenhum monitoramento selecionado", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "Selecione ao menos um monitoramento.",
+                    "Nenhum monitoramento selecionado",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
                 return;
             }
 
-            var selectedMonitors = lvActiveMonitors.SelectedItems
-                .Cast<ListViewItem>()
+            var selectedMonitors = lvActiveMonitors
+                .SelectedItems.Cast<ListViewItem>()
                 .Select(item => item.Tag as ActiveMonitor)
                 .Where(monitor => monitor != null)
                 .ToList();
@@ -2990,7 +3761,9 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 AddLog($"{monitor.DisplayName}: {(shouldPause ? "pausado" : "retomado")}.");
             }
 
-            SetStatus(shouldPause ? "Monitoramento(s) pausado(s)." : "Monitoramento(s) retomado(s).");
+            SetStatus(
+                shouldPause ? "Monitoramento(s) pausado(s)." : "Monitoramento(s) retomado(s)."
+            );
             SetMonitoringControls(false);
             PersistMonitorConfigurations();
         }
@@ -3018,8 +3791,11 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             txtConditionFieldSearch.Enabled = true;
             cboConditionAttribute.Enabled = true;
             cboConditionOperator.Enabled = true;
-            txtConditionValue.Enabled = (cboConditionOperator.SelectedItem as ConditionOperatorItem)?.RequiresValue != false;
-            btnPickConditionValue.Enabled = btnPickConditionValue.Enabled && txtConditionValue.Enabled;
+            txtConditionValue.Enabled =
+                (cboConditionOperator.SelectedItem as ConditionOperatorItem)?.RequiresValue
+                != false;
+            btnPickConditionValue.Enabled =
+                btnPickConditionValue.Enabled && txtConditionValue.Enabled;
             btnAddCondition.Enabled = true;
             btnRemoveCondition.Enabled = true;
             btnClearFilter.Enabled = true;
@@ -3054,7 +3830,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             }
         }
 
-        public override void UpdateConnection(IOrganizationService newService, ConnectionDetail detail, string actionName, object parameter)
+        public override void UpdateConnection(
+            IOrganizationService newService,
+            ConnectionDetail detail,
+            string actionName,
+            object parameter
+        )
         {
             CancelMonitorEditing(false);
             base.UpdateConnection(newService, detail, actionName, parameter);
@@ -3072,16 +3853,30 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 LogInfo("Connection has changed to: {0}", detail.WebApplicationUrl);
             }
 
-            currentEnvironmentUrl = detail == null
-                ? null
-                : (!string.IsNullOrWhiteSpace(detail.WebApplicationUrl)
-                    ? detail.WebApplicationUrl
-                    : (!string.IsNullOrWhiteSpace(detail.OriginalUrl) ? detail.OriginalUrl : detail.OrganizationDataServiceUrl));
-            currentEnvironmentName = detail == null
-                ? "Ambiente Dataverse"
-                : (!string.IsNullOrWhiteSpace(detail.OrganizationFriendlyName)
-                    ? detail.OrganizationFriendlyName
-                    : (!string.IsNullOrWhiteSpace(detail.ConnectionName) ? detail.ConnectionName : "Ambiente Dataverse"));
+            currentEnvironmentUrl =
+                detail == null
+                    ? null
+                    : (
+                        !string.IsNullOrWhiteSpace(detail.WebApplicationUrl)
+                            ? detail.WebApplicationUrl
+                            : (
+                                !string.IsNullOrWhiteSpace(detail.OriginalUrl)
+                                    ? detail.OriginalUrl
+                                    : detail.OrganizationDataServiceUrl
+                            )
+                    );
+            currentEnvironmentName =
+                detail == null
+                    ? "Ambiente Dataverse"
+                    : (
+                        !string.IsNullOrWhiteSpace(detail.OrganizationFriendlyName)
+                            ? detail.OrganizationFriendlyName
+                            : (
+                                !string.IsNullOrWhiteSpace(detail.ConnectionName)
+                                    ? detail.ConnectionName
+                                    : "Ambiente Dataverse"
+                            )
+                    );
             tslConnection.Text = detail == null ? "Aguardando conexao" : "Conectado";
             savedMonitorsRestored = false;
             recentChangesRestored = false;
@@ -3100,7 +3895,9 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 Metadata = metadata;
                 LogicalName = metadata.LogicalName;
                 DisplayName = GetAttributeDisplayName(metadata);
-                AttributeType = metadata.AttributeType.HasValue ? metadata.AttributeType.Value.ToString() : "Unknown";
+                AttributeType = metadata.AttributeType.HasValue
+                    ? metadata.AttributeType.Value.ToString()
+                    : "Unknown";
             }
 
             public AttributeMetadata Metadata { get; private set; }
@@ -3121,7 +3918,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private sealed class ConditionOperatorItem
         {
-            public ConditionOperatorItem(string fetchXmlOperator, string displayName, bool requiresValue, bool allowsMultipleValues)
+            public ConditionOperatorItem(
+                string fetchXmlOperator,
+                string displayName,
+                bool requiresValue,
+                bool allowsMultipleValues
+            )
             {
                 Operator = fetchXmlOperator;
                 DisplayName = displayName;
@@ -3184,10 +3986,7 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
             public string DisplayName
             {
-                get
-                {
-                    return Configuration.MonitorName;
-                }
+                get { return Configuration.MonitorName; }
             }
         }
 
@@ -3326,7 +4125,7 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             ValueChanged,
             EnteredFilter,
             ExitedFilter,
-            RecordUnavailable
+            RecordUnavailable,
         }
 
         private sealed class ImportValidationResult

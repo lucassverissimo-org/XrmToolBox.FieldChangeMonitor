@@ -1,9 +1,9 @@
-using Microsoft.Xrm.Sdk.Metadata;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
+using Microsoft.Xrm.Sdk.Metadata;
 
 namespace LucasVerissimo.XrmToolBox.Shared.WinForms
 {
@@ -32,7 +32,7 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 2,
-                Padding = new Padding(10)
+                Padding = new Padding(10),
             };
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
@@ -44,7 +44,7 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
                 GridLines = true,
                 HideSelection = false,
                 MultiSelect = allowMultiple,
-                View = View.Details
+                View = View.Details,
             };
             lvOptions.Columns.Add("Rotulo", 300);
             lvOptions.Columns.Add("Valor", 120);
@@ -53,14 +53,14 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
             var buttonPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.RightToLeft
+                FlowDirection = FlowDirection.RightToLeft,
             };
 
             btnOk = new Button
             {
                 Text = "OK",
                 Width = 90,
-                Height = 30
+                Height = 30,
             };
             btnOk.Click += (sender, args) => ConfirmSelection();
 
@@ -69,7 +69,7 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
                 Text = "Cancelar",
                 Width = 90,
                 Height = 30,
-                DialogResult = DialogResult.Cancel
+                DialogResult = DialogResult.Cancel,
             };
 
             buttonPanel.Controls.Add(btnOk);
@@ -102,7 +102,11 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
                 return;
             }
 
-            foreach (var option in enumAttribute.OptionSet.Options.Where(option => option.Value.HasValue).OrderBy(option => option.Value.Value))
+            foreach (
+                var option in enumAttribute
+                    .OptionSet.Options.Where(option => option.Value.HasValue)
+                    .OrderBy(option => option.Value.Value)
+            )
             {
                 AddOption(option, option.Value.Value.ToString(CultureInfo.InvariantCulture));
             }
@@ -131,12 +135,18 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
         {
             if (lvOptions.SelectedItems.Count == 0)
             {
-                MessageBox.Show(this, "Selecione ao menos um valor.", "Valor obrigatorio", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    this,
+                    "Selecione ao menos um valor.",
+                    "Valor obrigatorio",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
 
-            SelectedValues = lvOptions.SelectedItems
-                .Cast<ListViewItem>()
+            SelectedValues = lvOptions
+                .SelectedItems.Cast<ListViewItem>()
                 .Select(item => item.Tag as string)
                 .Where(value => !string.IsNullOrWhiteSpace(value))
                 .ToList();
@@ -162,7 +172,9 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
                 return option.Label.UserLocalizedLabel.Label;
             }
 
-            return option.Label.LocalizedLabels.Count > 0 ? option.Label.LocalizedLabels[0].Label : null;
+            return option.Label.LocalizedLabels.Count > 0
+                ? option.Label.LocalizedLabels[0].Label
+                : null;
         }
     }
 }

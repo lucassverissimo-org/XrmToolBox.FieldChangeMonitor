@@ -1,10 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Windows.Forms;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Metadata;
 using Microsoft.Xrm.Sdk.Query;
-using System;
-using System.Collections.Generic;
-using System.Windows.Forms;
 
 namespace LucasVerissimo.XrmToolBox.Shared.WinForms
 {
@@ -12,7 +12,10 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
     {
         private readonly IOrganizationService service;
         private readonly LookupAttributeMetadata lookupAttribute;
-        private readonly Dictionary<string, EntityMetadata> metadataCache = new Dictionary<string, EntityMetadata>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, EntityMetadata> metadataCache = new Dictionary<
+            string,
+            EntityMetadata
+        >(StringComparer.OrdinalIgnoreCase);
         private readonly ComboBox cboTarget;
         private readonly TextBox txtSearch;
         private readonly Button btnSearch;
@@ -20,7 +23,10 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
         private readonly Button btnOk;
         private readonly Button btnCancel;
 
-        public LookupValuePickerForm(IOrganizationService service, LookupAttributeMetadata lookupAttribute)
+        public LookupValuePickerForm(
+            IOrganizationService service,
+            LookupAttributeMetadata lookupAttribute
+        )
         {
             this.service = service;
             this.lookupAttribute = lookupAttribute;
@@ -38,7 +44,7 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 3,
-                Padding = new Padding(10)
+                Padding = new Padding(10),
             };
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
@@ -48,7 +54,7 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 5,
-                RowCount = 1
+                RowCount = 1,
             };
             searchLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 55F));
             searchLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180F));
@@ -60,33 +66,26 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
             {
                 Text = "Tabela",
                 Dock = DockStyle.Fill,
-                TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
             };
 
             cboTarget = new ComboBox
             {
                 Dock = DockStyle.Fill,
-                DropDownStyle = ComboBoxStyle.DropDownList
+                DropDownStyle = ComboBoxStyle.DropDownList,
             };
 
             var lblSearch = new System.Windows.Forms.Label
             {
                 Text = "Busca",
                 Dock = DockStyle.Fill,
-                TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
             };
 
-            txtSearch = new TextBox
-            {
-                Dock = DockStyle.Fill
-            };
+            txtSearch = new TextBox { Dock = DockStyle.Fill };
             txtSearch.KeyDown += txtSearch_KeyDown;
 
-            btnSearch = new Button
-            {
-                Text = "Buscar",
-                Dock = DockStyle.Fill
-            };
+            btnSearch = new Button { Text = "Buscar", Dock = DockStyle.Fill };
             btnSearch.Click += (sender, args) => SearchRecords();
 
             searchLayout.Controls.Add(lblTarget, 0, 0);
@@ -102,7 +101,7 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
                 GridLines = true,
                 HideSelection = false,
                 MultiSelect = false,
-                View = View.Details
+                View = View.Details,
             };
             lvRecords.Columns.Add("Nome", 420);
             lvRecords.Columns.Add("Id", 280);
@@ -111,14 +110,14 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
             var buttonPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.RightToLeft
+                FlowDirection = FlowDirection.RightToLeft,
             };
 
             btnOk = new Button
             {
                 Text = "OK",
                 Width = 90,
-                Height = 30
+                Height = 30,
             };
             btnOk.Click += (sender, args) => ConfirmSelection();
 
@@ -127,7 +126,7 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
                 Text = "Cancelar",
                 Width = 90,
                 Height = 30,
-                DialogResult = DialogResult.Cancel
+                DialogResult = DialogResult.Cancel,
             };
 
             buttonPanel.Controls.Add(btnOk);
@@ -176,7 +175,13 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
         {
             if (cboTarget.SelectedItem == null)
             {
-                MessageBox.Show(this, "O lookup nao possui tabela alvo disponivel.", "Tabela indisponivel", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    this,
+                    "O lookup nao possui tabela alvo disponivel.",
+                    "Tabela indisponivel",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
 
@@ -195,13 +200,20 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
                 {
                     ColumnSet = columns,
                     NoLock = true,
-                    TopCount = 50
+                    TopCount = 50,
                 };
 
                 var searchText = txtSearch.Text.Trim();
-                if (!string.IsNullOrWhiteSpace(searchText) && !string.IsNullOrWhiteSpace(primaryName))
+                if (
+                    !string.IsNullOrWhiteSpace(searchText)
+                    && !string.IsNullOrWhiteSpace(primaryName)
+                )
                 {
-                    query.Criteria.AddCondition(primaryName, ConditionOperator.Like, "%" + searchText + "%");
+                    query.Criteria.AddCondition(
+                        primaryName,
+                        ConditionOperator.Like,
+                        "%" + searchText + "%"
+                    );
                 }
 
                 var result = service.RetrieveMultiple(query);
@@ -210,9 +222,10 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
 
                 foreach (var entity in result.Entities)
                 {
-                    var name = !string.IsNullOrWhiteSpace(primaryName) && entity.Contains(primaryName)
-                        ? Convert.ToString(entity[primaryName])
-                        : entity.Id.ToString("D");
+                    var name =
+                        !string.IsNullOrWhiteSpace(primaryName) && entity.Contains(primaryName)
+                            ? Convert.ToString(entity[primaryName])
+                            : entity.Id.ToString("D");
                     var item = new ListViewItem(name);
                     item.SubItems.Add(entity.Id.ToString("D"));
                     item.Tag = entity.Id.ToString("D");
@@ -223,7 +236,13 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Erro ao buscar registros", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    this,
+                    ex.Message,
+                    "Erro ao buscar registros",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
             }
         }
 
@@ -235,11 +254,14 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
                 return metadata;
             }
 
-            var response = (RetrieveEntityResponse)service.Execute(new RetrieveEntityRequest
-            {
-                LogicalName = logicalName,
-                EntityFilters = EntityFilters.Entity
-            });
+            var response = (RetrieveEntityResponse)
+                service.Execute(
+                    new RetrieveEntityRequest
+                    {
+                        LogicalName = logicalName,
+                        EntityFilters = EntityFilters.Entity,
+                    }
+                );
 
             metadataCache[logicalName] = response.EntityMetadata;
             return response.EntityMetadata;
@@ -249,7 +271,13 @@ namespace LucasVerissimo.XrmToolBox.Shared.WinForms
         {
             if (lvRecords.SelectedItems.Count == 0)
             {
-                MessageBox.Show(this, "Selecione um registro.", "Registro obrigatorio", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    this,
+                    "Selecione um registro.",
+                    "Registro obrigatorio",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
                 return;
             }
 

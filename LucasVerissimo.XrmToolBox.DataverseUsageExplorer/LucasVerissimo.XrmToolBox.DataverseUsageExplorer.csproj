@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project
+  ToolsVersion="15.0"
+  DefaultTargets="Build"
+  xmlns="http://schemas.microsoft.com/developer/msbuild/2003"
+>
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{C4820E2A-19F8-4DD8-A89C-CF99620F9EC9}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>LucasVerissimo.XrmToolBox.DataverseUsageExplorer</RootNamespace>
+    <AssemblyName>LucasVerissimo.XrmToolBox.DataverseUsageExplorer</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="McTools.Xrm.Connection">
+      <HintPath>..\packages\MscrmTools.Xrm.Connection.1.2025.7.63\lib\net48\McTools.Xrm.Connection.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Xrm.Sdk">
+      <HintPath>..\packages\Microsoft.CrmSdk.CoreAssemblies.9.0.2.59\lib\net462\Microsoft.Xrm.Sdk.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Xrm.Tooling.Connector, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.CrmSdk.XrmTooling.CoreAssembly.9.1.1.65\lib\net462\Microsoft.Xrm.Tooling.Connector.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="XrmToolBox.Extensibility">
+      <HintPath>..\packages\XrmToolBoxPackage.1.2025.7.71\lib\net48\XrmToolBox.Extensibility.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Models\UsageModels.cs" />
+    <Compile Include="Controls\SearchableMetadataComboBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Services\DataverseServices.cs" />
+    <Compile Include="Scanners\Scanners.cs" />
+    <Compile Include="Parsers\ReferenceParsers.cs" />
+    <Compile Include="UsageExplorerControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="UsageExplorerControl.Designer.cs">
+      <DependentUpon>UsageExplorerControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="UsageDetailsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UsageDetailsForm.Designer.cs">
+      <DependentUpon>UsageDetailsForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MyPlugin.cs" />
+    <Compile Include="PluginImages.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="UsageExplorerControl.resx">
+      <DependentUpon>UsageExplorerControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UsageDetailsForm.resx">
+      <DependentUpon>UsageDetailsForm.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LucasVerissimo.XrmToolBox.Shared\LucasVerissimo.XrmToolBox.Shared.csproj">
+      <Project>{26D57429-B7D4-49C8-8C1A-9616D0E7E34A}</Project>
+      <Name>LucasVerissimo.XrmToolBox.Shared</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Assets\dataverse-usage-explorer-icon-source.png" />
+    <None Include="Assets\dataverse-usage-explorer-32.png" />
+    <None Include="Assets\dataverse-usage-explorer-80.png" />
+    <None Include="Assets\dataverse-usage-explorer-128.png" />
+    <None Include="README.md" />
+    <None Include="LucasVerissimo.XrmToolBox.DataverseUsageExplorer.nuspec" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>
+      IF $(ConfigurationName) == Debug (
+      IF NOT EXIST "$(TargetDir)Plugins" mkdir "$(TargetDir)Plugins"
+      DEL "$(TargetDir)Plugins\manifest.json" 2&gt;NUL
+      xcopy "$(TargetPath)" "$(TargetDir)Plugins\" /Y
+      xcopy "$(TargetDir)$(TargetName).pdb" "$(TargetDir)Plugins\" /Y
+      )
+    </PostBuildEvent>
+  </PropertyGroup>
+</Project>

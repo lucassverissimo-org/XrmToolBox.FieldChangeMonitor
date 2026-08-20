@@ -23,7 +23,8 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         public List<MonitorDefinition> SavedMonitors { get; set; } = new List<MonitorDefinition>();
 
-        public List<PersistedFieldChange> RecentChanges { get; set; } = new List<PersistedFieldChange>();
+        public List<PersistedFieldChange> RecentChanges { get; set; } =
+            new List<PersistedFieldChange>();
     }
 
     public class MonitorDefinition
@@ -48,7 +49,8 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         public string EnvironmentUrl { get; set; }
 
-        public List<PersistedRecordSnapshot> LastSnapshot { get; set; } = new List<PersistedRecordSnapshot>();
+        public List<PersistedRecordSnapshot> LastSnapshot { get; set; } =
+            new List<PersistedRecordSnapshot>();
     }
 
     public class PersistedRecordSnapshot

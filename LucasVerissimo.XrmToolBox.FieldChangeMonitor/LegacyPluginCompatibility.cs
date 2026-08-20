@@ -8,7 +8,5 @@ namespace XrmTool_bravo
     /// through MEF; new manifests discover the canonical plugin type only.
     /// </summary>
     [Obsolete("Use LucasVerissimo.XrmToolBox.FieldChangeMonitor.MyPlugin.")]
-    public sealed class MyPlugin : LucasVerissimo.XrmToolBox.FieldChangeMonitor.MyPlugin
-    {
-    }
+    public sealed class MyPlugin : LucasVerissimo.XrmToolBox.FieldChangeMonitor.MyPlugin { }
 }

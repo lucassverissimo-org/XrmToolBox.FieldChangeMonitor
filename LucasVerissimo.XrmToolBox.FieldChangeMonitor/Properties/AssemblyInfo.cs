@@ -2,7 +2,9 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 
 [assembly: AssemblyTitle("Field Change Monitor for XrmToolBox")]
-[assembly: AssemblyDescription("Monitor Dataverse table field changes with FetchXML filters and Windows alerts.")]
+[assembly: AssemblyDescription(
+    "Monitor Dataverse table field changes with FetchXML filters and Windows alerts."
+)]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Lucas Verissimo")]
 [assembly: AssemblyProduct("Field Change Monitor")]

@@ -1,6 +1,0 @@
-C:\projetos_lucas\XrmToolBox.FieldChangeMonitor\LucasVerissimo.XrmToolBox.Shared\bin\Debug\LucasVerissimo.XrmToolBox.Shared.dll
-C:\projetos_lucas\XrmToolBox.FieldChangeMonitor\LucasVerissimo.XrmToolBox.Shared\bin\Debug\LucasVerissimo.XrmToolBox.Shared.pdb
-C:\projetos_lucas\XrmToolBox.FieldChangeMonitor\LucasVerissimo.XrmToolBox.Shared\obj\Debug\LucasVerissimo.XrmToolBox.Shared.csproj.AssemblyReference.cache
-C:\projetos_lucas\XrmToolBox.FieldChangeMonitor\LucasVerissimo.XrmToolBox.Shared\obj\Debug\LucasVerissimo.XrmToolBox.Shared.csproj.CoreCompileInputs.cache
-C:\projetos_lucas\XrmToolBox.FieldChangeMonitor\LucasVerissimo.XrmToolBox.Shared\obj\Debug\LucasVerissimo.XrmToolBox.Shared.dll
-C:\projetos_lucas\XrmToolBox.FieldChangeMonitor\LucasVerissimo.XrmToolBox.Shared\obj\Debug\LucasVerissimo.XrmToolBox.Shared.pdb

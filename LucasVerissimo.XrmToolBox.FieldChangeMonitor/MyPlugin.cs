@@ -9,14 +9,19 @@ using XrmToolBox.Extensibility.Interfaces;
 
 namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 {
-    [Export(typeof(IXrmToolBoxPlugin)),
+    [
+        Export(typeof(IXrmToolBoxPlugin)),
         ExportMetadata("Name", "Field Change Monitor"),
-        ExportMetadata("Description", "Monitor Dataverse table fields with FetchXML filters and Windows alerts"),
+        ExportMetadata(
+            "Description",
+            "Monitor Dataverse table fields with FetchXML filters and Windows alerts"
+        ),
         ExportMetadata("SmallImageBase64", PluginImages.SmallImageBase64),
         ExportMetadata("BigImageBase64", PluginImages.BigImageBase64),
         ExportMetadata("BackgroundColor", "White"),
         ExportMetadata("PrimaryFontColor", "Black"),
-        ExportMetadata("SecondaryFontColor", "DarkSlateGray")]
+        ExportMetadata("SecondaryFontColor", "DarkSlateGray")
+    ]
     public class MyPlugin : PluginBase
     {
         public override IXrmToolBoxPluginControl GetControl()
@@ -25,11 +30,11 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         }
 
         /// <summary>
-        /// Constructor 
+        /// Constructor
         /// </summary>
         public MyPlugin()
         {
-            // If you have external assemblies that you need to load, uncomment the following to 
+            // If you have external assemblies that you need to load, uncomment the following to
             // hook into the event that will fire when an Assembly fails to resolve
             // AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(AssemblyResolveEventHandler);
         }
@@ -37,7 +42,7 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         /// <summary>
         /// Event fired by CLR when an assembly reference fails to load
         /// Assumes that related assemblies will be loaded from a subfolder named the same as the Plugin
-        /// For example, a folder named Sample.XrmToolBox.MyPlugin 
+        /// For example, a folder named Sample.XrmToolBox.MyPlugin
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="args"></param>

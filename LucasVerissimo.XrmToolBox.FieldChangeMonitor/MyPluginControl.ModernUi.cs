@@ -48,7 +48,7 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 ColumnCount = 2,
                 RowCount = 1,
                 BackColor = Color.FromArgb(247, 249, 250),
-                Padding = new Padding(0)
+                Padding = new Padding(0),
             };
             shell.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 205F));
             shell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
@@ -59,14 +59,20 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
                 Padding = new Padding(12, 20, 12, 12),
-                BackColor = Color.White
+                BackColor = Color.White,
             };
-            navigation.Controls.Add(CreateNavigationButton("＋  Novo monitoramento", ResetAndShowNewWizard));
+            navigation.Controls.Add(
+                CreateNavigationButton("＋  Novo monitoramento", ResetAndShowNewWizard)
+            );
             navigation.Controls.Add(CreateNavigationButton("▣  Monitoramentos", ShowMonitorsPage));
             navigation.Controls.Add(CreateNavigationButton("◷  Histórico", ShowHistoryPage));
             navigation.Controls.Add(CreateNavigationButton("⚙  Configurações", ShowSettingsPage));
 
-            modernPageHost = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(247, 249, 250) };
+            modernPageHost = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(247, 249, 250),
+            };
             shell.Controls.Add(navigation, 0, 0);
             shell.Controls.Add(modernPageHost, 1, 0);
             Controls.Add(shell);
@@ -87,7 +93,8 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private void UpdateModernShellBounds()
         {
-            if (modernShell == null) return;
+            if (modernShell == null)
+                return;
             var top = toolStripMenu.Visible ? toolStripMenu.Bottom : 0;
             var bottom = statusStrip.Visible ? statusStrip.Top : ClientSize.Height;
             modernShell.Bounds = new Rectangle(0, top, ClientSize.Width, Math.Max(0, bottom - top));
@@ -104,7 +111,7 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Color.White,
                 ForeColor = Color.FromArgb(35, 45, 50),
-                Margin = new Padding(0, 0, 0, 8)
+                Margin = new Padding(0, 0, 0, 8),
             };
             button.FlatAppearance.BorderSize = 0;
             button.Click += (sender, args) => action();
@@ -120,7 +127,7 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 Height = 42,
                 Font = new Font("Segoe UI Semibold", 18F),
                 ForeColor = Color.FromArgb(28, 36, 40),
-                Padding = new Padding(0, 6, 0, 0)
+                Padding = new Padding(0, 6, 0, 0),
             };
         }
 
@@ -132,18 +139,29 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 Dock = DockStyle.Top,
                 Height = 34,
                 Font = new Font("Segoe UI", 9.5F),
-                ForeColor = Color.FromArgb(85, 95, 100)
+                ForeColor = Color.FromArgb(85, 95, 100),
             };
         }
 
         private void BuildWizardPage()
         {
-            wizardPage = new Panel { Dock = DockStyle.Fill, Padding = new Padding(28, 18, 28, 18), AutoScroll = true };
+            wizardPage = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(28, 18, 28, 18),
+                AutoScroll = true,
+            };
             wizardPage.Controls.Add(CreateWizardFooter());
-            wizardContent = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 10, 0, 10) };
+            wizardContent = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(0, 10, 0, 10),
+            };
             wizardPage.Controls.Add(wizardContent);
             wizardPage.Controls.Add(CreateWizardProgress());
-            wizardPage.Controls.Add(CreateHint("Complete as etapas abaixo para configurar o monitoramento."));
+            wizardPage.Controls.Add(
+                CreateHint("Complete as etapas abaixo para configurar o monitoramento.")
+            );
             wizardPage.Controls.Add(CreatePageTitle("Criar monitoramento"));
             modernPageHost.Controls.Add(wizardPage);
 
@@ -161,7 +179,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private Control CreateWizardProgress()
         {
-            var panel = new TableLayoutPanel { Dock = DockStyle.Top, Height = 56, ColumnCount = 4 };
+            var panel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                Height = 56,
+                ColumnCount = 4,
+            };
             var names = new[] { "1  Tabela", "2  Campos", "3  Filtros", "4  Revisar" };
             for (var index = 0; index < names.Length; index++)
             {
@@ -173,7 +196,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                     TextAlign = ContentAlignment.MiddleCenter,
                     Font = new Font("Segoe UI Semibold", 10F),
                     BorderStyle = BorderStyle.FixedSingle,
-                    Margin = new Padding(index == 0 ? 0 : 4, 7, index == names.Length - 1 ? 0 : 4, 7)
+                    Margin = new Padding(
+                        index == 0 ? 0 : 4,
+                        7,
+                        index == names.Length - 1 ? 0 : 4,
+                        7
+                    ),
                 };
                 wizardStepLabels.Add(label);
                 panel.Controls.Add(label, index, 0);
@@ -188,7 +216,7 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 Dock = DockStyle.Bottom,
                 Height = 58,
                 FlowDirection = FlowDirection.RightToLeft,
-                Padding = new Padding(0, 10, 0, 0)
+                Padding = new Padding(0, 10, 0, 0),
             };
             var next = CreateActionButton("Continuar", true);
             next.Click += (sender, args) => MoveWizardNext();
@@ -197,7 +225,8 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             var cancel = CreateActionButton("Cancelar", false);
             cancel.Click += (sender, args) =>
             {
-                if (editingMonitor != null) CancelMonitorEditing(true);
+                if (editingMonitor != null)
+                    CancelMonitorEditing(true);
                 ShowMonitorsPage();
             };
             next.Name = "modernWizardNext";
@@ -218,19 +247,32 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 FlatStyle = FlatStyle.Flat,
                 BackColor = primary ? modernAccent : Color.White,
                 ForeColor = primary ? Color.White : Color.FromArgb(45, 55, 60),
-                Margin = new Padding(8, 0, 0, 0)
+                Margin = new Padding(8, 0, 0, 0),
             };
-            button.FlatAppearance.BorderColor = primary ? modernAccent : Color.FromArgb(180, 188, 193);
+            button.FlatAppearance.BorderColor = primary
+                ? modernAccent
+                : Color.FromArgb(180, 188, 193);
             return button;
         }
 
         private Panel CreateEntityStep()
         {
             var page = new Panel { Padding = new Padding(8, 12, 8, 8) };
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+            var layout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+            };
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            var form = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 6, Padding = new Padding(0, 4, 0, 0) };
+            var form = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 6,
+                Padding = new Padding(0, 4, 0, 0),
+            };
             form.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             form.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120F));
             form.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 125F));
@@ -257,7 +299,13 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             nudIntervalSeconds.Dock = DockStyle.Left;
             nudIntervalSeconds.Width = 120;
             form.Controls.Add(nudIntervalSeconds, 0, 5);
-            layout.Controls.Add(CreateHint("Selecione a tabela e dê um nome fácil de reconhecer. Os campos serão carregados automaticamente ao continuar."), 0, 0);
+            layout.Controls.Add(
+                CreateHint(
+                    "Selecione a tabela e dê um nome fácil de reconhecer. Os campos serão carregados automaticamente ao continuar."
+                ),
+                0,
+                0
+            );
             layout.Controls.Add(form, 0, 1);
             page.Controls.Add(layout);
             return page;
@@ -265,7 +313,13 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private static void AddFormLabel(TableLayoutPanel panel, string text, int row)
         {
-            var label = new Label { Text = text, Dock = DockStyle.Fill, TextAlign = ContentAlignment.BottomLeft, Font = new Font("Segoe UI Semibold", 9F) };
+            var label = new Label
+            {
+                Text = text,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.BottomLeft,
+                Font = new Font("Segoe UI Semibold", 9F),
+            };
             panel.Controls.Add(label, 0, row);
             panel.SetColumnSpan(label, panel.ColumnCount);
         }
@@ -300,7 +354,7 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 Padding = new Padding(20),
-                AutoEllipsis = true
+                AutoEllipsis = true,
             };
             page.Controls.Add(modernReviewSummary);
             return page;
@@ -313,18 +367,27 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             for (var index = 0; index < wizardSteps.Count; index++)
             {
                 wizardSteps[index].Visible = index == currentWizardStep;
-                wizardStepLabels[index].BackColor = index <= currentWizardStep ? Color.FromArgb(220, 242, 244) : Color.White;
-                wizardStepLabels[index].ForeColor = index <= currentWizardStep ? modernAccent : Color.FromArgb(90, 100, 105);
+                wizardStepLabels[index].BackColor =
+                    index <= currentWizardStep ? Color.FromArgb(220, 242, 244) : Color.White;
+                wizardStepLabels[index].ForeColor =
+                    index <= currentWizardStep ? modernAccent : Color.FromArgb(90, 100, 105);
             }
             wizardSteps[currentWizardStep].BringToFront();
             var next = FindControl<Button>(wizardPage, "modernWizardNext");
             var back = FindControl<Button>(wizardPage, "modernWizardBack");
-            if (next != null) next.Text = currentWizardStep == 3 ? (editingMonitor == null ? "Iniciar monitoramento" : "Salvar alterações") : "Continuar";
-            if (back != null) back.Enabled = currentWizardStep > 0;
-            if (currentWizardStep == 3) UpdateModernReview();
+            if (next != null)
+                next.Text =
+                    currentWizardStep == 3
+                        ? (editingMonitor == null ? "Iniciar monitoramento" : "Salvar alterações")
+                        : "Continuar";
+            if (back != null)
+                back.Enabled = currentWizardStep > 0;
+            if (currentWizardStep == 3)
+                UpdateModernReview();
         }
 
-        private static T FindControl<T>(Control root, string name) where T : Control
+        private static T FindControl<T>(Control root, string name)
+            where T : Control
         {
             return root.Controls.Find(name, true).OfType<T>().FirstOrDefault();
         }
@@ -333,16 +396,36 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
         {
             if (currentWizardStep == 0)
             {
-                if (string.IsNullOrWhiteSpace(GetSelectedEntityLogicalName()) || string.IsNullOrWhiteSpace(txtMonitorName.Text))
+                if (
+                    string.IsNullOrWhiteSpace(GetSelectedEntityLogicalName())
+                    || string.IsNullOrWhiteSpace(txtMonitorName.Text)
+                )
                 {
-                    MessageBox.Show("Selecione uma tabela e informe o nome do monitoramento.", "Dados obrigatórios", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(
+                        "Selecione uma tabela e informe o nome do monitoramento.",
+                        "Dados obrigatórios",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
                     return;
                 }
-                if (currentEntityMetadata == null || !string.Equals(currentEntityLogicalName, GetSelectedEntityLogicalName(), StringComparison.OrdinalIgnoreCase))
+                if (
+                    currentEntityMetadata == null
+                    || !string.Equals(
+                        currentEntityLogicalName,
+                        GetSelectedEntityLogicalName(),
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
                 {
                     if (Service == null)
                     {
-                        MessageBox.Show("Conecte-se a um ambiente antes de continuar.", "Conexão obrigatória", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(
+                            "Conecte-se a um ambiente antes de continuar.",
+                            "Conexão obrigatória",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information
+                        );
                         return;
                     }
 
@@ -353,7 +436,12 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             }
             else if (currentWizardStep == 1 && checkedMonitoredColumns.Count == 0)
             {
-                MessageBox.Show("Selecione ao menos um campo para monitorar.", "Campos obrigatórios", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "Selecione ao menos um campo para monitorar.",
+                    "Campos obrigatórios",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
                 return;
             }
 
@@ -400,43 +488,68 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private void UpdateModernReview()
         {
-            var filterText = filterConditions.Count == 0
-                ? "Todos os registros"
-                : string.Join("; ", filterConditions.Select(item =>
-                    $"{item.AttributeDisplayName} {item.OperatorDisplayName} {string.Join(", ", item.Values ?? new List<string>())}"));
+            var filterText =
+                filterConditions.Count == 0
+                    ? "Todos os registros"
+                    : string.Join(
+                        "; ",
+                        filterConditions.Select(item =>
+                            $"{item.AttributeDisplayName} {item.OperatorDisplayName} {string.Join(", ", item.Values ?? new List<string>())}"
+                        )
+                    );
             modernReviewSummary.Text =
-                "RESUMO DA CONFIGURAÇÃO\r\n\r\n" +
-                $"Nome:  {txtMonitorName.Text.Trim()}\r\n\r\n" +
-                $"Tabela:  {GetSelectedEntityLogicalName()}\r\n\r\n" +
-                $"Intervalo:  {nudIntervalSeconds.Value:0} segundos\r\n\r\n" +
-                $"Campos monitorados ({checkedMonitoredColumns.Count}):\r\n  {string.Join(", ", checkedMonitoredColumns.OrderBy(item => item))}\r\n\r\n" +
-                $"Filtro:  {filterText}";
+                "RESUMO DA CONFIGURAÇÃO\r\n\r\n"
+                + $"Nome:  {txtMonitorName.Text.Trim()}\r\n\r\n"
+                + $"Tabela:  {GetSelectedEntityLogicalName()}\r\n\r\n"
+                + $"Intervalo:  {nudIntervalSeconds.Value:0} segundos\r\n\r\n"
+                + $"Campos monitorados ({checkedMonitoredColumns.Count}):\r\n  {string.Join(", ", checkedMonitoredColumns.OrderBy(item => item))}\r\n\r\n"
+                + $"Filtro:  {filterText}";
         }
 
         private void BuildMonitorsPage()
         {
-            monitorsPage = new Panel { Dock = DockStyle.Fill, Padding = new Padding(24, 16, 24, 16) };
+            monitorsPage = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(24, 16, 24, 16),
+            };
             var newButton = CreateActionButton("＋  Novo monitoramento", true);
             newButton.Dock = DockStyle.Right;
             newButton.Width = 190;
             newButton.Click += (sender, args) => ResetAndShowNewWizard();
             var heading = new Panel { Dock = DockStyle.Top, Height = 62 };
             heading.Controls.Add(newButton);
-            heading.Controls.Add(CreateHint("Acompanhe, pause ou edite os monitoramentos deste ambiente."));
+            heading.Controls.Add(
+                CreateHint("Acompanhe, pause ou edite os monitoramentos deste ambiente.")
+            );
             heading.Controls.Add(CreatePageTitle("Monitoramentos"));
 
-            chkWindowsPopups.Text = "Receber popups do Windows — desmarque para manter apenas o registro no histórico";
+            chkWindowsPopups.Text =
+                "Receber popups do Windows — desmarque para manter apenas o registro no histórico";
             chkWindowsPopups.Dock = DockStyle.Top;
             chkWindowsPopups.Height = 34;
 
             var toolbar = CreateMonitorToolbar();
             modernMonitorsGrid = CreateMonitorGrid();
-            var monitorArea = new Panel { Dock = DockStyle.Top, Height = 300, BackColor = Color.White, Padding = new Padding(0) };
+            var monitorArea = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 300,
+                BackColor = Color.White,
+                Padding = new Padding(0),
+            };
             monitorArea.Controls.Add(modernMonitorsGrid);
             monitorArea.Controls.Add(toolbar);
 
             modernRecentGrid = CreateRecentGrid();
-            var recentLabel = new Label { Text = "Alterações recentes", Dock = DockStyle.Top, Height = 36, Font = new Font("Segoe UI Semibold", 12F), Padding = new Padding(0, 10, 0, 0) };
+            var recentLabel = new Label
+            {
+                Text = "Alterações recentes",
+                Dock = DockStyle.Top,
+                Height = 36,
+                Font = new Font("Segoe UI Semibold", 12F),
+                Padding = new Padding(0, 10, 0, 0),
+            };
             monitorsPage.Controls.Add(modernRecentGrid);
             monitorsPage.Controls.Add(recentLabel);
             monitorsPage.Controls.Add(monitorArea);
@@ -447,17 +560,49 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private Control CreateMonitorToolbar()
         {
-            var toolbar = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 45, WrapContents = false, Padding = new Padding(6, 6, 6, 4), BackColor = Color.White };
-            var selectAll = new CheckBox { Text = "Selecionar todos", AutoSize = true, Margin = new Padding(4, 7, 12, 0) };
+            var toolbar = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                Height = 45,
+                WrapContents = false,
+                Padding = new Padding(6, 6, 6, 4),
+                BackColor = Color.White,
+            };
+            var selectAll = new CheckBox
+            {
+                Text = "Selecionar todos",
+                AutoSize = true,
+                Margin = new Padding(4, 7, 12, 0),
+            };
             selectAll.CheckedChanged += (sender, args) =>
             {
-                foreach (DataGridViewRow row in modernMonitorsGrid.Rows) row.Cells["Selected"].Value = selectAll.Checked;
+                foreach (DataGridViewRow row in modernMonitorsGrid.Rows)
+                    row.Cells["Selected"].Value = selectAll.Checked;
                 UpdateModernSelectionState();
             };
-            modernSelectionLabel = new Label { Text = "0 selecionados", AutoSize = true, Margin = new Padding(0, 9, 12, 0), Font = new Font("Segoe UI Semibold", 9F) };
-            modernBulkPauseButton = CreateIconButton("Ⅱ", "Pausar selecionados", () => SetSelectedMonitorsPaused(true));
-            modernBulkContinueButton = CreateIconButton("▶", "Continuar selecionados", () => SetSelectedMonitorsPaused(false));
-            var spacer = new Label { AutoSize = false, Width = 18, Height = 30 };
+            modernSelectionLabel = new Label
+            {
+                Text = "0 selecionados",
+                AutoSize = true,
+                Margin = new Padding(0, 9, 12, 0),
+                Font = new Font("Segoe UI Semibold", 9F),
+            };
+            modernBulkPauseButton = CreateIconButton(
+                "Ⅱ",
+                "Pausar selecionados",
+                () => SetSelectedMonitorsPaused(true)
+            );
+            modernBulkContinueButton = CreateIconButton(
+                "▶",
+                "Continuar selecionados",
+                () => SetSelectedMonitorsPaused(false)
+            );
+            var spacer = new Label
+            {
+                AutoSize = false,
+                Width = 18,
+                Height = 30,
+            };
             var import = CreateActionButton("Importar", false);
             import.Click += (sender, args) => ImportMonitors();
             var export = CreateActionButton("Exportar selecionados", false);
@@ -474,7 +619,15 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private Button CreateIconButton(string icon, string tooltip, Action action)
         {
-            var button = new Button { Text = icon, Width = 38, Height = 30, FlatStyle = FlatStyle.Flat, BackColor = Color.White, Margin = new Padding(3, 1, 3, 1) };
+            var button = new Button
+            {
+                Text = icon,
+                Width = 38,
+                Height = 30,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.White,
+                Margin = new Padding(3, 1, 3, 1),
+            };
             button.FlatAppearance.BorderColor = Color.FromArgb(185, 193, 198);
             button.Click += (sender, args) => action();
             modernToolTip.SetToolTip(button, tooltip);
@@ -488,34 +641,110 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             grid.Dock = DockStyle.Fill;
             grid.AutoGenerateColumns = false;
             grid.Columns.Add(new DataGridViewCheckBoxColumn { Name = "Selected", Width = 34 });
-            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Name", HeaderText = "Nome", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, FillWeight = 155 });
-            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Entity", HeaderText = "Tabela", Width = 105 });
-            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Fields", HeaderText = "Campos", Width = 72 });
-            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Records", HeaderText = "Registros", Width = 76 });
-            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Interval", HeaderText = "Intervalo", Width = 72 });
-            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", HeaderText = "Status", Width = 105 });
-            grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "LastQuery", HeaderText = "Última consulta", Width = 120 });
+            grid.Columns.Add(
+                new DataGridViewTextBoxColumn
+                {
+                    Name = "Name",
+                    HeaderText = "Nome",
+                    AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+                    FillWeight = 155,
+                }
+            );
+            grid.Columns.Add(
+                new DataGridViewTextBoxColumn
+                {
+                    Name = "Entity",
+                    HeaderText = "Tabela",
+                    Width = 105,
+                }
+            );
+            grid.Columns.Add(
+                new DataGridViewTextBoxColumn
+                {
+                    Name = "Fields",
+                    HeaderText = "Campos",
+                    Width = 72,
+                }
+            );
+            grid.Columns.Add(
+                new DataGridViewTextBoxColumn
+                {
+                    Name = "Records",
+                    HeaderText = "Registros",
+                    Width = 76,
+                }
+            );
+            grid.Columns.Add(
+                new DataGridViewTextBoxColumn
+                {
+                    Name = "Interval",
+                    HeaderText = "Intervalo",
+                    Width = 72,
+                }
+            );
+            grid.Columns.Add(
+                new DataGridViewTextBoxColumn
+                {
+                    Name = "Status",
+                    HeaderText = "Status",
+                    Width = 105,
+                }
+            );
+            grid.Columns.Add(
+                new DataGridViewTextBoxColumn
+                {
+                    Name = "LastQuery",
+                    HeaderText = "Última consulta",
+                    Width = 120,
+                }
+            );
             grid.Columns.Add(CreateGridButton("Pause", "Ações", 38));
             grid.Columns.Add(CreateGridButton("Edit", string.Empty, 38));
             grid.Columns.Add(CreateGridButton("Remove", string.Empty, 38));
             grid.CellContentClick += ModernMonitorsGrid_CellContentClick;
             grid.CurrentCellDirtyStateChanged += (sender, args) =>
             {
-                if (grid.IsCurrentCellDirty) grid.CommitEdit(DataGridViewDataErrorContexts.Commit);
+                if (grid.IsCurrentCellDirty)
+                    grid.CommitEdit(DataGridViewDataErrorContexts.Commit);
             };
-            grid.CellValueChanged += (sender, args) => { if (args.RowIndex >= 0 && grid.Columns[args.ColumnIndex].Name == "Selected") UpdateModernSelectionState(); };
+            grid.CellValueChanged += (sender, args) =>
+            {
+                if (args.RowIndex >= 0 && grid.Columns[args.ColumnIndex].Name == "Selected")
+                    UpdateModernSelectionState();
+            };
             grid.CellToolTipTextNeeded += (sender, args) =>
             {
-                if (args.RowIndex < 0) return;
+                if (args.RowIndex < 0)
+                    return;
                 var name = grid.Columns[args.ColumnIndex].Name;
-                args.ToolTipText = name == "Pause" ? (((ActiveMonitor)grid.Rows[args.RowIndex].Tag).IsPaused ? "Continuar" : "Pausar") : name == "Edit" ? "Editar" : name == "Remove" ? "Remover" : null;
+                args.ToolTipText =
+                    name == "Pause"
+                        ? (
+                            ((ActiveMonitor)grid.Rows[args.RowIndex].Tag).IsPaused
+                                ? "Continuar"
+                                : "Pausar"
+                        )
+                    : name == "Edit" ? "Editar"
+                    : name == "Remove" ? "Remover"
+                    : null;
             };
             return grid;
         }
 
-        private static DataGridViewButtonColumn CreateGridButton(string name, string header, int width)
+        private static DataGridViewButtonColumn CreateGridButton(
+            string name,
+            string header,
+            int width
+        )
         {
-            return new DataGridViewButtonColumn { Name = name, HeaderText = header, Width = width, FlatStyle = FlatStyle.Flat, UseColumnTextForButtonValue = false };
+            return new DataGridViewButtonColumn
+            {
+                Name = name,
+                HeaderText = header,
+                Width = width,
+                FlatStyle = FlatStyle.Flat,
+                UseColumnTextForButtonValue = false,
+            };
         }
 
         private static DataGridView CreateBaseGrid()
@@ -534,7 +763,7 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
                 AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
                 RowTemplate = { Height = 34 },
                 ColumnHeadersHeight = 34,
-                EnableHeadersVisualStyles = false
+                EnableHeadersVisualStyles = false,
             };
         }
 
@@ -544,19 +773,36 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             grid.Dock = DockStyle.Fill;
             grid.ReadOnly = true;
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            foreach (var header in new[] { "ModifiedOn", "Evento", "ID do registro", "ModifiedBy", "Registro", "Campo", "Alteração" }) grid.Columns.Add(header, header);
+            foreach (
+                var header in new[]
+                {
+                    "ModifiedOn",
+                    "Evento",
+                    "ID do registro",
+                    "ModifiedBy",
+                    "Registro",
+                    "Campo",
+                    "Alteração",
+                }
+            )
+                grid.Columns.Add(header, header);
             return grid;
         }
 
         private void ModernMonitorsGrid_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0) return;
+            if (e.RowIndex < 0)
+                return;
             var monitor = modernMonitorsGrid.Rows[e.RowIndex].Tag as ActiveMonitor;
-            if (monitor == null) return;
+            if (monitor == null)
+                return;
             var column = modernMonitorsGrid.Columns[e.ColumnIndex].Name;
-            if (column == "Pause") SetMonitorsPaused(new[] { monitor }, !monitor.IsPaused);
-            else if (column == "Edit") EditModernMonitor(monitor);
-            else if (column == "Remove") RemoveModernMonitor(monitor);
+            if (column == "Pause")
+                SetMonitorsPaused(new[] { monitor }, !monitor.IsPaused);
+            else if (column == "Edit")
+                EditModernMonitor(monitor);
+            else if (column == "Remove")
+                RemoveModernMonitor(monitor);
         }
 
         private void SetSelectedMonitorsPaused(bool paused)
@@ -584,14 +830,18 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private List<ActiveMonitor> GetModernSelectedMonitors()
         {
-            return modernMonitorsGrid.Rows.Cast<DataGridViewRow>()
+            return modernMonitorsGrid
+                .Rows.Cast<DataGridViewRow>()
                 .Where(row => Convert.ToBoolean(row.Cells["Selected"].Value ?? false))
-                .Select(row => row.Tag as ActiveMonitor).Where(item => item != null).ToList();
+                .Select(row => row.Tag as ActiveMonitor)
+                .Where(item => item != null)
+                .ToList();
         }
 
         private void UpdateModernSelectionState()
         {
-            if (modernMonitorsGrid == null) return;
+            if (modernMonitorsGrid == null)
+                return;
             var selected = GetModernSelectedMonitors();
             modernSelectionLabel.Text = $"{selected.Count} selecionado(s)";
             modernBulkPauseButton.Enabled = selected.Any(item => !item.IsPaused);
@@ -619,19 +869,31 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private void RefreshModernMonitorGrid()
         {
-            if (modernMonitorsGrid == null) return;
-            var selectedIds = new HashSet<Guid>(GetModernSelectedMonitors().Select(item => item.Id));
+            if (modernMonitorsGrid == null)
+                return;
+            var selectedIds = new HashSet<Guid>(
+                GetModernSelectedMonitors().Select(item => item.Id)
+            );
             modernMonitorsGrid.Rows.Clear();
             lock (monitorsLock)
             {
                 foreach (var monitor in activeMonitors)
                 {
-                    var rowIndex = modernMonitorsGrid.Rows.Add(selectedIds.Contains(monitor.Id), monitor.DisplayName,
-                        monitor.Configuration.EntityLogicalName, $"{monitor.Configuration.MonitoredColumns.Count} campos",
-                        monitor.MonitoredRecordCount.ToString(), $"{monitor.Configuration.IntervalSeconds} s",
+                    var rowIndex = modernMonitorsGrid.Rows.Add(
+                        selectedIds.Contains(monitor.Id),
+                        monitor.DisplayName,
+                        monitor.Configuration.EntityLogicalName,
+                        $"{monitor.Configuration.MonitoredColumns.Count} campos",
+                        monitor.MonitoredRecordCount.ToString(),
+                        $"{monitor.Configuration.IntervalSeconds} s",
                         monitor.IsPaused ? "Ⅱ  Pausado" : "▶  Ativo",
-                        monitor.LastQueryOn.HasValue ? monitor.LastQueryOn.Value.ToString("HH:mm:ss") : "—",
-                        monitor.IsPaused ? "▶" : "Ⅱ", "✎", "⌫");
+                        monitor.LastQueryOn.HasValue
+                            ? monitor.LastQueryOn.Value.ToString("HH:mm:ss")
+                            : "—",
+                        monitor.IsPaused ? "▶" : "Ⅱ",
+                        "✎",
+                        "⌫"
+                    );
                     modernMonitorsGrid.Rows[rowIndex].Tag = monitor;
                 }
             }
@@ -640,17 +902,24 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private void RefreshModernRecentGrid()
         {
-            if (modernRecentGrid == null) return;
+            if (modernRecentGrid == null)
+                return;
             modernRecentGrid.Rows.Clear();
             foreach (ListViewItem item in lvRecentChanges.Items.Cast<ListViewItem>().Take(20))
             {
-                modernRecentGrid.Rows.Add(item.SubItems.Cast<ListViewItem.ListViewSubItem>().Take(7).Select(sub => sub.Text).ToArray());
+                modernRecentGrid.Rows.Add(
+                    item.SubItems.Cast<ListViewItem.ListViewSubItem>()
+                        .Take(7)
+                        .Select(sub => sub.Text)
+                        .ToArray()
+                );
             }
         }
 
         private void ResetAndShowNewWizard()
         {
-            if (editingMonitor != null) CancelMonitorEditing(false);
+            if (editingMonitor != null)
+                CancelMonitorEditing(false);
             txtMonitorName.Clear();
             txtEntityLogicalName.Text = string.Empty;
             currentEntityMetadata = null;
@@ -672,7 +941,11 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private void BuildHistoryPage()
         {
-            historyPage = new Panel { Dock = DockStyle.Fill, Padding = new Padding(24, 16, 24, 16) };
+            historyPage = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(24, 16, 24, 16),
+            };
             var tabs = new TabControl { Dock = DockStyle.Fill };
             var changes = new TabPage("Alterações");
             var log = new TabPage("Log técnico");
@@ -683,7 +956,9 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             tabs.TabPages.Add(changes);
             tabs.TabPages.Add(log);
             historyPage.Controls.Add(tabs);
-            historyPage.Controls.Add(CreateHint("Consulte as alterações detectadas pelos monitoramentos deste ambiente."));
+            historyPage.Controls.Add(
+                CreateHint("Consulte as alterações detectadas pelos monitoramentos deste ambiente.")
+            );
             historyPage.Controls.Add(CreatePageTitle("Histórico de alterações"));
             modernPageHost.Controls.Add(historyPage);
         }
@@ -695,13 +970,48 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private void BuildSettingsPage()
         {
-            settingsPage = new Panel { Dock = DockStyle.Fill, Padding = new Padding(24, 16, 24, 16), AutoScroll = true };
-            var content = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true };
-            var storage = new GroupBox { Text = "Armazenamento", Width = 760, Height = 145, Padding = new Padding(14) };
-            var storageFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+            settingsPage = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(24, 16, 24, 16),
+                AutoScroll = true,
+            };
+            var content = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoScroll = true,
+            };
+            var storage = new GroupBox
+            {
+                Text = "Armazenamento",
+                Width = 760,
+                Height = 145,
+                Padding = new Padding(14),
+            };
+            var storageFlow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+            };
             var maxRow = new FlowLayoutPanel { AutoSize = true, Width = 720 };
-            maxRow.Controls.Add(new Label { Text = "Quantidade máxima de alterações por ambiente", AutoSize = true, Margin = new Padding(0, 8, 16, 0) });
-            modernMaximumHistory = new NumericUpDown { Minimum = 10, Maximum = 5000, Value = DefaultMaximumRecentChanges, Width = 90 };
+            maxRow.Controls.Add(
+                new Label
+                {
+                    Text = "Quantidade máxima de alterações por ambiente",
+                    AutoSize = true,
+                    Margin = new Padding(0, 8, 16, 0),
+                }
+            );
+            modernMaximumHistory = new NumericUpDown
+            {
+                Minimum = 10,
+                Maximum = 5000,
+                Value = DefaultMaximumRecentChanges,
+                Width = 90,
+            };
             maxRow.Controls.Add(modernMaximumHistory);
             var openFolder = CreateActionButton("Abrir pasta de configurações", false);
             openFolder.Click += (sender, args) => OpenSettingsFolder();
@@ -711,14 +1021,40 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             storageButtons.Controls.Add(openFolder);
             storageButtons.Controls.Add(clearData);
             storageFlow.Controls.Add(maxRow);
-            storageFlow.Controls.Add(new Label { Text = "Os dados são armazenados localmente nas configurações do XrmToolBox.", AutoSize = true, Margin = new Padding(0, 8, 0, 8) });
+            storageFlow.Controls.Add(
+                new Label
+                {
+                    Text = "Os dados são armazenados localmente nas configurações do XrmToolBox.",
+                    AutoSize = true,
+                    Margin = new Padding(0, 8, 0, 8),
+                }
+            );
             storageFlow.Controls.Add(storageButtons);
             storage.Controls.Add(storageFlow);
 
-            var behavior = new GroupBox { Text = "Comportamento", Width = 760, Height = 115, Padding = new Padding(14) };
-            var behaviorFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-            modernRestoreMonitors = new CheckBox { Text = "Restaurar monitoramentos ao abrir a ferramenta", AutoSize = true };
-            modernConfirmOpenRecord = new CheckBox { Text = "Confirmar antes de abrir um registro no navegador", AutoSize = true };
+            var behavior = new GroupBox
+            {
+                Text = "Comportamento",
+                Width = 760,
+                Height = 115,
+                Padding = new Padding(14),
+            };
+            var behaviorFlow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+            };
+            modernRestoreMonitors = new CheckBox
+            {
+                Text = "Restaurar monitoramentos ao abrir a ferramenta",
+                AutoSize = true,
+            };
+            modernConfirmOpenRecord = new CheckBox
+            {
+                Text = "Confirmar antes de abrir um registro no navegador",
+                AutoSize = true,
+            };
             behaviorFlow.Controls.Add(modernRestoreMonitors);
             behaviorFlow.Controls.Add(modernConfirmOpenRecord);
             behavior.Controls.Add(behaviorFlow);
@@ -729,23 +1065,34 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
             content.Controls.Add(behavior);
             content.Controls.Add(save);
             settingsPage.Controls.Add(content);
-            settingsPage.Controls.Add(CreateHint("Defina o comportamento geral da ferramenta neste computador."));
+            settingsPage.Controls.Add(
+                CreateHint("Defina o comportamento geral da ferramenta neste computador.")
+            );
             settingsPage.Controls.Add(CreatePageTitle("Configurações"));
             modernPageHost.Controls.Add(settingsPage);
         }
 
         private void ApplyModernSettings()
         {
-            if (mySettings == null || modernMaximumHistory == null) return;
-            modernMaximumHistory.Value = Math.Max(modernMaximumHistory.Minimum, Math.Min(modernMaximumHistory.Maximum,
-                mySettings.MaximumRecentChanges <= 0 ? DefaultMaximumRecentChanges : mySettings.MaximumRecentChanges));
+            if (mySettings == null || modernMaximumHistory == null)
+                return;
+            modernMaximumHistory.Value = Math.Max(
+                modernMaximumHistory.Minimum,
+                Math.Min(
+                    modernMaximumHistory.Maximum,
+                    mySettings.MaximumRecentChanges <= 0
+                        ? DefaultMaximumRecentChanges
+                        : mySettings.MaximumRecentChanges
+                )
+            );
             modernConfirmOpenRecord.Checked = mySettings.ConfirmBeforeOpeningRecord;
             modernRestoreMonitors.Checked = mySettings.RestoreMonitorsOnStartup;
         }
 
         private void SaveModernSettings()
         {
-            if (mySettings == null) return;
+            if (mySettings == null)
+                return;
             mySettings.MaximumRecentChanges = Convert.ToInt32(modernMaximumHistory.Value);
             mySettings.ConfirmBeforeOpeningRecord = modernConfirmOpenRecord.Checked;
             mySettings.RestoreMonitorsOnStartup = modernRestoreMonitors.Checked;
@@ -755,19 +1102,34 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private int GetMaximumRecentChanges()
         {
-            return mySettings == null || mySettings.MaximumRecentChanges <= 0 ? DefaultMaximumRecentChanges : mySettings.MaximumRecentChanges;
+            return mySettings == null || mySettings.MaximumRecentChanges <= 0
+                ? DefaultMaximumRecentChanges
+                : mySettings.MaximumRecentChanges;
         }
 
         private void OpenSettingsFolder()
         {
-            var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MscrmTools", "XrmToolBox", "Settings");
+            var folder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "MscrmTools",
+                "XrmToolBox",
+                "Settings"
+            );
             Directory.CreateDirectory(folder);
             Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
         }
 
         private void ClearModernHistory()
         {
-            if (MessageBox.Show("Deseja limpar o histórico deste ambiente?", "Limpar histórico", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+            if (
+                MessageBox.Show(
+                    "Deseja limpar o histórico deste ambiente?",
+                    "Limpar histórico",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning
+                ) != DialogResult.Yes
+            )
+                return;
             lvRecentChanges.Items.Clear();
             PersistRecentChanges();
             RefreshModernRecentGrid();
@@ -781,7 +1143,8 @@ namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor
 
         private void ShowModernPage(Control page)
         {
-            foreach (Control control in modernPageHost.Controls) control.Visible = false;
+            foreach (Control control in modernPageHost.Controls)
+                control.Visible = false;
             page.Visible = true;
             page.BringToFront();
         }
