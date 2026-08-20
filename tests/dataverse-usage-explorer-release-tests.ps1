@@ -56,11 +56,13 @@ try {
 
     $packageVersion = $specification.SelectSingleNode("/n:package/n:metadata/n:version", $namespace).InnerText
     $projectUrl = $specification.SelectSingleNode("/n:package/n:metadata/n:projectUrl", $namespace).InnerText
+    $iconUrl = $specification.SelectSingleNode("/n:package/n:metadata/n:iconUrl", $namespace).InnerText
     $assemblyVersion = [Reflection.AssemblyName]::GetAssemblyName($assemblyPath).Version
     $normalizedAssemblyVersion = Get-NormalizedVersion $assemblyVersion
 
     Assert-True ($packageVersion -eq $normalizedAssemblyVersion) "Package and plugin assembly versions match"
     Assert-True ($projectUrl -eq "https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/tree/main/LucasVerissimo.XrmToolBox.DataverseUsageExplorer") "Project URL points to the tool documentation"
+    Assert-True ($iconUrl -eq "https://raw.githubusercontent.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/main/LucasVerissimo.XrmToolBox.DataverseUsageExplorer/Assets/dataverse-usage-explorer-128.png") "Icon URL points to the public PNG asset"
     Assert-True (Test-Path $sharedAssemblyPath) "Compatible Shared assembly exists"
 
     $packagePath = Join-Path $repositoryRoot "bin\$Configuration\$packageId.$packageVersion.nupkg"

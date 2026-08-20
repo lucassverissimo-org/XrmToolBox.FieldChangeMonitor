@@ -7,5 +7,5 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyProduct("Dataverse Usage Explorer")]
 [assembly: ComVisible(false)]
 [assembly: Guid("c4820e2a-19f8-4dd8-a89c-cf99620f9ec9")]
-[assembly: AssemblyVersion("1.0.1.0")]
-[assembly: AssemblyFileVersion("1.0.1.0")]
+[assembly: AssemblyVersion("1.0.2.0")]
+[assembly: AssemblyFileVersion("1.0.2.0")]

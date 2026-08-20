@@ -41,7 +41,7 @@ The validation builds the Release package and confirms that:
 Package publication is permanent for a given version. Confirm the final version before pushing.
 
 ```powershell
-nuget push .\bin\Release\LucasVerissimo.XrmToolBox.DataverseUsageExplorer.1.0.1.nupkg `
+nuget push .\bin\Release\LucasVerissimo.XrmToolBox.DataverseUsageExplorer.1.0.2.nupkg `
   -Source https://api.nuget.org/v3/index.json `
   -ApiKey $env:NUGET_API_KEY
 ```

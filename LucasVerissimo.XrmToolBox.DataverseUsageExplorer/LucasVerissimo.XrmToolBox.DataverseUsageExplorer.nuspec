@@ -2,20 +2,21 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>LucasVerissimo.XrmToolBox.DataverseUsageExplorer</id>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <title>Dataverse Usage Explorer</title>
     <authors>Lucas Verissimo</authors>
     <owners>Lucas Verissimo</owners>
     <projectUrl>https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/tree/main/LucasVerissimo.XrmToolBox.DataverseUsageExplorer</projectUrl>
     <repository type="git" url="https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor.git" branch="main" />
-    <icon>dataverse-usage-explorer-128.png</icon>
+    <iconUrl>https://raw.githubusercontent.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/main/LucasVerissimo.XrmToolBox.DataverseUsageExplorer/Assets/dataverse-usage-explorer-128.png</iconUrl>
     <readme>README.md</readme>
     <license type="expression">MIT</license>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Find where Dataverse tables and columns are used in forms, views, workflows, Power Automate flows, business rules, and plugin steps.</description>
     <summary>Explore dependencies and text references to Dataverse tables and columns.</summary>
-    <releaseNotes>Version 1.0.1 corrects the package metadata required by the XrmToolBox portal.
-Provides a 128 x 128 package icon and a publicly accessible project URL.
+    <releaseNotes>Version 1.0.2 provides an explicit public PNG icon URL for XrmToolBox Tool Library validation.
+
+Version 1.0.1 added a 128 x 128 package icon and dedicated public documentation URL.
 
 Version 1.0.0 introduced table and column usage searches across forms, views, business rules, classic workflows, business process flows, Power Automate flows, and plugin steps.</releaseNotes>
     <copyright>Copyright (c) Lucas Verissimo 2026</copyright>

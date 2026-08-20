@@ -46,10 +46,10 @@ reported. Review results before changing production customizations.
 The tool communicates directly with the Dataverse environment selected in XrmToolBox. It does not send
 environment data to an external service.
 
-## Version 1.0.1
+## Version 1.0.2
 
-This release updates the public package metadata with a 128 x 128 icon and a dedicated documentation URL for
-XrmToolBox Tool Library validation.
+This release provides an explicit public PNG icon URL required by the XrmToolBox Tool Library registration
+validator. Version 1.0.1 introduced the 128 x 128 icon and dedicated documentation URL.
 
 ## Source and issues
 
