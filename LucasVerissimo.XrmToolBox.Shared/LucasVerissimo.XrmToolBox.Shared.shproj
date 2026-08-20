@@ -6,4 +6,15 @@
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Compile Include="BusinessLogic\DataverseMetadataService.cs" />
+    <Compile Include="BusinessLogic\DataverseQueryService.cs" />
+    <Compile Include="BusinessLogic\MetadataLabelResolver.cs" />
+    <Compile Include="LookupValuePickerForm.cs" />
+    <Compile Include="OptionSetValuePickerForm.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="LucasVerissimo.XrmToolBox.Shared.projitems" />
+    <None Include="README.md" />
+  </ItemGroup>
 </Project>
