@@ -10,7 +10,6 @@ $repositoryRoot = Split-Path $PSScriptRoot -Parent
 $packageId = "LucasVerissimo.XrmToolBox.DataverseUsageExplorer"
 $toolDirectory = Join-Path $repositoryRoot $packageId
 $assemblyPath = Join-Path $repositoryRoot "bin\$Configuration\$packageId.dll"
-$sharedAssemblyPath = Join-Path $repositoryRoot "bin\$Configuration\LucasVerissimo.XrmToolBox.Shared.dll"
 $nuspecPath = Join-Path $toolDirectory "$packageId.nuspec"
 $buildScriptPath = Join-Path $repositoryRoot "build-dataverse-usage-explorer-package.ps1"
 $failures = [System.Collections.Generic.List[string]]::new()
@@ -43,6 +42,30 @@ function Get-NormalizedVersion {
     return $parts -join "."
 }
 
+function Get-AssemblyReferenceNames {
+    param([string]$AssemblyPath)
+
+    $stream = [IO.File]::OpenRead($AssemblyPath)
+    try {
+        $reader = [Reflection.PortableExecutable.PEReader]::new($stream)
+        try {
+            $metadata = [Reflection.Metadata.PEReaderExtensions]::GetMetadataReader($reader)
+            return @(
+                foreach ($handle in $metadata.AssemblyReferences) {
+                    $reference = $metadata.GetAssemblyReference($handle)
+                    $metadata.GetString($reference.Name)
+                }
+            )
+        }
+        finally {
+            $reader.Dispose()
+        }
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
 Push-Location $repositoryRoot
 try {
     if (-not $SkipBuild) {
@@ -63,7 +86,6 @@ try {
     Assert-True ($packageVersion -eq $normalizedAssemblyVersion) "Package and plugin assembly versions match"
     Assert-True ($projectUrl -eq "https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/tree/main/LucasVerissimo.XrmToolBox.DataverseUsageExplorer") "Project URL points to the tool documentation"
     Assert-True ($iconUrl -eq "https://raw.githubusercontent.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/main/LucasVerissimo.XrmToolBox.DataverseUsageExplorer/Assets/dataverse-usage-explorer-128.png") "Icon URL points to the public PNG asset"
-    Assert-True (Test-Path $sharedAssemblyPath) "Compatible Shared assembly exists"
 
     $packagePath = Join-Path $repositoryRoot "bin\$Configuration\$packageId.$packageVersion.nupkg"
     Assert-True (Test-Path $packagePath) "Expected NuGet package exists"
@@ -73,8 +95,10 @@ try {
     try {
         $entries = @($archive.Entries | ForEach-Object FullName)
 
+        $pluginAssemblies = @($entries | Where-Object { $_ -match "^lib/net48/Plugins/[^/]+\.dll$" })
         Assert-True ($entries -contains "lib/net48/Plugins/$packageId.dll") "Plugin assembly is under lib/net48/Plugins"
-        Assert-True ($entries -contains "lib/net48/Plugins/LucasVerissimo.XrmToolBox.Shared.dll") "Shared assembly is packaged"
+        Assert-True ($pluginAssemblies.Count -eq 1) "Package contains exactly one plugin assembly"
+        Assert-True (-not ($entries -contains "lib/net48/Plugins/LucasVerissimo.XrmToolBox.Shared.dll")) "Shared assembly is not packaged separately"
         Assert-True ($entries -contains "dataverse-usage-explorer-128.png") "128 x 128 package icon is included"
         Assert-True ($entries -contains "README.md") "Package README is included"
         Assert-True (-not ($entries -match "FieldChangeMonitor\.dll$")) "Field Change Monitor assembly is not packaged"
@@ -101,10 +125,10 @@ try {
         $archive.Dispose()
     }
 
-    $pluginReferences = [Reflection.Assembly]::LoadFrom($assemblyPath).GetReferencedAssemblies()
-    $sharedReference = $pluginReferences | Where-Object Name -eq "LucasVerissimo.XrmToolBox.Shared"
-    Assert-True ($null -ne $sharedReference) "Plugin explicitly references Shared"
-    Assert-True ($sharedReference.Version -eq [Version]"1.0.0.0") "Plugin targets the backward-compatible Shared identity"
+    $pluginAssembly = [Reflection.Assembly]::LoadFrom($assemblyPath)
+    $sharedReference = Get-AssemblyReferenceNames $assemblyPath | Where-Object { $_ -eq "LucasVerissimo.XrmToolBox.Shared" }
+    Assert-True ($null -eq $sharedReference) "Plugin has no external Shared reference"
+    Assert-True ($null -ne $pluginAssembly.GetType("LucasVerissimo.XrmToolBox.Shared.BusinessLogic.DataverseMetadataService", $false)) "Plugin contains the Shared Project implementation"
 
     if ($failures.Count -gt 0) {
         throw "$($failures.Count) release validation(s) failed."

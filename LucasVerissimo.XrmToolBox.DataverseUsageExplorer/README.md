@@ -46,10 +46,11 @@ reported. Review results before changing production customizations.
 The tool communicates directly with the Dataverse environment selected in XrmToolBox. It does not send
 environment data to an external service.
 
-## Version 1.0.2
+## Version 1.0.3
 
-This release provides an explicit public PNG icon URL required by the XrmToolBox Tool Library registration
-validator. Version 1.0.1 introduced the 128 x 128 icon and dedicated documentation URL.
+This release compiles the Shared Project source directly into the plugin assembly. The public NuGet package
+contains one versioned plugin DLL without a runtime Shared dependency. Version 1.0.2 introduced the explicit
+public PNG icon URL required by the XrmToolBox Tool Library registration validator.
 
 ## Source and issues
 

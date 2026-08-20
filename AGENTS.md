@@ -56,14 +56,18 @@ FeatureControl.resx
 - Keep UI models, scanners, monitoring rules, settings, and component-specific navigation in the owning tool.
 - Prefer services/BLL classes for reusable Dataverse metadata, query, and data-access operations.
 
-## Shared assembly compatibility
+## Shared Project standard
 
-XrmToolBox loads plugin assemblies from a common directory. Therefore:
+XrmToolBox loads plugin assemblies from a common directory and its portal validates every assembly in the
+package. Therefore:
 
-- Keep the public API of `LucasVerissimo.XrmToolBox.Shared` backward compatible.
-- Do not remove or change existing public members without evaluating every tool in the solution.
-- A breaking shared change requires a deliberate assembly/versioning and migration strategy.
-- Each published tool package must contain or depend on the exact compatible Shared assembly.
+- Shared code is maintained in `LucasVerissimo.XrmToolBox.Shared.shproj` and its `.projitems` file.
+- Tool projects import the `.projitems`; Shared source is compiled directly into each tool assembly.
+- Do not recreate a Shared `.csproj`, `ProjectReference`, or standalone Shared assembly.
+- Do not remove or change shared members without evaluating and rebuilding every tool in the solution.
+- Do not publish `LucasVerissimo.XrmToolBox.Shared.dll` as a separate file in a tool package.
+- Each tool package must contain exactly one assembly directly under `lib/net48/Plugins`, and that assembly's
+  version must match the NuGet package version.
 
 ## Validation checklist
 
@@ -76,4 +80,6 @@ Before handing work back:
 - Designer code contains no business logic.
 - Shared logic is not duplicated in tool projects.
 - One tool's package does not accidentally include another tool's assembly.
+- A tool assembly contains the expected Shared Project types and no external reference to a Shared assembly.
+- A tool package contains exactly one versioned plugin assembly under `lib/net48/Plugins`.
 - Existing tools remain buildable and independently publishable.

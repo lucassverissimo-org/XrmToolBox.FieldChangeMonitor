@@ -3,27 +3,28 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+Set-StrictMode -Version Latest
 
-$project = ".\LucasVerissimo.XrmToolBox.DataverseUsageExplorer\LucasVerissimo.XrmToolBox.DataverseUsageExplorer.csproj"
-$specification = ".\LucasVerissimo.XrmToolBox.DataverseUsageExplorer\LucasVerissimo.XrmToolBox.DataverseUsageExplorer.nuspec"
-$outputDirectory = ".\bin\$Configuration"
+$packageId = "LucasVerissimo.XrmToolBox.DataverseUsageExplorer"
+$projectPath = Join-Path $PSScriptRoot "$packageId\$packageId.csproj"
+$specificationPath = Join-Path $PSScriptRoot "$packageId\$packageId.nuspec"
+$outputDirectory = Join-Path $PSScriptRoot "bin\$Configuration"
+$nugetPath = Join-Path $PSScriptRoot "obj\tools\nuget.exe"
 
-dotnet build $project -c $Configuration
+dotnet build $projectPath -c $Configuration
 if ($LASTEXITCODE -ne 0) {
-    throw "A compilacao do Dataverse Usage Explorer falhou. O pacote nao sera criado."
+    throw "The Dataverse Usage Explorer build failed. The package will not be created."
 }
 
-$nugetCommand = Get-Command nuget -ErrorAction SilentlyContinue
-if ($nugetCommand) {
-    & $nugetCommand.Source pack $specification -OutputDirectory $outputDirectory
-    exit $LASTEXITCODE
+if (-not (Test-Path $nugetPath)) {
+    New-Item -ItemType Directory -Force -Path (Split-Path $nugetPath -Parent) | Out-Null
+    Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile $nugetPath
 }
 
-$localNuget = Join-Path $PSScriptRoot "obj\nuget\nuget.exe"
-if (-not (Test-Path $localNuget)) {
-    New-Item -ItemType Directory -Force -Path (Split-Path $localNuget) | Out-Null
-    Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile $localNuget
-}
+& $nugetPath pack $specificationPath `
+    -Properties "Configuration=$Configuration" `
+    -OutputDirectory $outputDirectory
 
-& $localNuget pack $specification -OutputDirectory $outputDirectory
-exit $LASTEXITCODE
+if ($LASTEXITCODE -ne 0) {
+    throw "NuGet failed to create the Dataverse Usage Explorer package."
+}

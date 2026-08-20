@@ -5,7 +5,6 @@ Set-StrictMode -Version Latest
 
 $repositoryRoot = Split-Path $PSScriptRoot -Parent
 $toolDirectory = Join-Path $repositoryRoot "LucasVerissimo.XrmToolBox.FieldChangeMonitor"
-$sharedDirectory = Join-Path $repositoryRoot "LucasVerissimo.XrmToolBox.Shared"
 $toolProject = Join-Path $toolDirectory "LucasVerissimo.XrmToolBox.FieldChangeMonitor.csproj"
 $toolOutput = Join-Path $repositoryRoot "bin\$Configuration"
 $packageId = "LucasVerissimo.XrmToolBox.FieldChangeMonitor"
@@ -24,11 +23,6 @@ function Assert-True {
     Write-Host "OK: $Message" -ForegroundColor Green
 }
 
-function Get-NormalizedText {
-    param([string]$Text)
-    return $Text.Replace("`r`n", "`n").Trim()
-}
-
 function Invoke-PrivateStatic {
     param([Type]$Type, [string]$Name, [object[]]$Arguments)
     $method = $Type.GetMethod($Name, [Reflection.BindingFlags]"NonPublic,Static")
@@ -38,48 +32,41 @@ function Invoke-PrivateStatic {
     return $method.Invoke($null, $Arguments)
 }
 
+function Get-AssemblyReferenceNames {
+    param([string]$AssemblyPath)
+
+    $stream = [IO.File]::OpenRead($AssemblyPath)
+    try {
+        $reader = [Reflection.PortableExecutable.PEReader]::new($stream)
+        try {
+            $metadata = [Reflection.Metadata.PEReaderExtensions]::GetMetadataReader($reader)
+            return @(
+                foreach ($handle in $metadata.AssemblyReferences) {
+                    $reference = $metadata.GetAssemblyReference($handle)
+                    $metadata.GetString($reference.Name)
+                }
+            )
+        }
+        finally {
+            $reader.Dispose()
+        }
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
 Push-Location $repositoryRoot
 try {
     dotnet build $toolProject -c $Configuration | Out-Host
     Assert-True ($LASTEXITCODE -eq 0) "Solution de producao compila"
 
-    $sameLogicFiles = @(
-        "MyPlugin.cs",
-        "MyPluginControl.ModernUi.cs",
-        "MyPluginControl.designer.cs",
-        "PluginImages.cs",
-        "Settings.cs"
-    )
-    foreach ($file in $sameLogicFiles) {
-        $before = Get-NormalizedText ((git show "HEAD:$file") -join "`n")
-        $after = Get-NormalizedText ([IO.File]::ReadAllText((Join-Path $toolDirectory $file)))
-        $after = $after.Replace("namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor", "namespace XrmTool_bravo")
-        Assert-True ($before -eq $after) "Logica preservada em $file"
-    }
-
-    $beforeControl = Get-NormalizedText ((git show "HEAD:MyPluginControl.cs") -join "`n")
-    $afterControl = Get-NormalizedText ([IO.File]::ReadAllText((Join-Path $toolDirectory "MyPluginControl.cs")))
-    $afterControl = $afterControl.Replace("using LucasVerissimo.XrmToolBox.Shared.WinForms;`n", "")
-    $afterControl = $afterControl.Replace("namespace LucasVerissimo.XrmToolBox.FieldChangeMonitor", "namespace XrmTool_bravo")
-    Assert-True ($beforeControl -eq $afterControl) "MyPluginControl mudou apenas para importar o Shared"
-
-    foreach ($file in @("LookupValuePickerForm.cs", "OptionSetValuePickerForm.cs")) {
-        $before = Get-NormalizedText ((git show "HEAD:$file") -join "`n")
-        $after = Get-NormalizedText ([IO.File]::ReadAllText((Join-Path $sharedDirectory $file)))
-        $after = $after.Replace("namespace LucasVerissimo.XrmToolBox.Shared.WinForms", "namespace XrmTool_bravo")
-        $after = $after.Replace("public sealed class", "internal sealed class")
-        Assert-True ($before -eq $after) "$file preservou a implementacao original"
-    }
-
-    $sharedAssemblyPath = Join-Path $toolOutput "LucasVerissimo.XrmToolBox.Shared.dll"
     $toolAssemblyPath = Join-Path $toolOutput "$packageId.dll"
-    Assert-True (Test-Path $sharedAssemblyPath) "DLL Shared copiada para a saida do plugin"
     Assert-True (Test-Path $toolAssemblyPath) "DLL principal gerada"
 
-    $sharedAssembly = [Reflection.Assembly]::LoadFrom($sharedAssemblyPath)
     $toolAssembly = [Reflection.Assembly]::LoadFrom($toolAssemblyPath)
-    Assert-True ($null -ne $sharedAssembly.GetType("LucasVerissimo.XrmToolBox.Shared.WinForms.LookupValuePickerForm")) "Picker de lookup carregavel"
-    Assert-True ($null -ne $sharedAssembly.GetType("LucasVerissimo.XrmToolBox.Shared.WinForms.OptionSetValuePickerForm")) "Picker de opcoes carregavel"
+    Assert-True ($null -ne $toolAssembly.GetType("LucasVerissimo.XrmToolBox.Shared.WinForms.LookupValuePickerForm")) "Picker de lookup compilado no plugin"
+    Assert-True ($null -ne $toolAssembly.GetType("LucasVerissimo.XrmToolBox.Shared.WinForms.OptionSetValuePickerForm")) "Picker de opcoes compilado no plugin"
 
     $pluginType = $toolAssembly.GetType("LucasVerissimo.XrmToolBox.FieldChangeMonitor.MyPlugin", $false)
     $controlType = $toolAssembly.GetType("LucasVerissimo.XrmToolBox.FieldChangeMonitor.MyPluginControl", $false)
@@ -106,7 +93,7 @@ try {
     $optionSet.Options.Add([Microsoft.Xrm.Sdk.Metadata.OptionMetadata]::new([Microsoft.Xrm.Sdk.Label]::new("Inativo", 1046), 2))
     $optionAttribute = [Microsoft.Xrm.Sdk.Metadata.PicklistAttributeMetadata]::new()
     $optionAttribute.OptionSet = $optionSet
-    $optionPickerType = $sharedAssembly.GetType("LucasVerissimo.XrmToolBox.Shared.WinForms.OptionSetValuePickerForm", $true)
+    $optionPickerType = $toolAssembly.GetType("LucasVerissimo.XrmToolBox.Shared.WinForms.OptionSetValuePickerForm", $true)
     $optionPicker = [Activator]::CreateInstance($optionPickerType, @($optionAttribute, $true))
     try {
         $optionsList = $optionPickerType.GetField("lvOptions", [Reflection.BindingFlags]"NonPublic,Instance").GetValue($optionPicker)
@@ -118,7 +105,7 @@ try {
 
     $lookupAttribute = [Microsoft.Xrm.Sdk.Metadata.LookupAttributeMetadata]::new()
     $lookupAttribute.Targets = @("account", "contact")
-    $lookupPickerType = $sharedAssembly.GetType("LucasVerissimo.XrmToolBox.Shared.WinForms.LookupValuePickerForm", $true)
+    $lookupPickerType = $toolAssembly.GetType("LucasVerissimo.XrmToolBox.Shared.WinForms.LookupValuePickerForm", $true)
     $lookupPicker = [Activator]::CreateInstance($lookupPickerType, @($null, $lookupAttribute))
     try {
         $targetCombo = $lookupPickerType.GetField("cboTarget", [Reflection.BindingFlags]"NonPublic,Instance").GetValue($lookupPicker)
@@ -172,14 +159,18 @@ try {
 
     & (Join-Path $repositoryRoot "build-package.ps1") -Configuration $Configuration
     Assert-True ($LASTEXITCODE -eq 0) "Script de empacotamento conclui"
+    $toolReferences = Get-AssemblyReferenceNames $toolAssemblyPath
+    Assert-True (-not ($toolReferences -contains "LucasVerissimo.XrmToolBox.Shared")) "DLL do plugin nao referencia Shared externamente"
     $package = Get-ChildItem (Join-Path $toolOutput "$packageId.*.nupkg") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     Assert-True ($null -ne $package) "Pacote NuGet foi criado"
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
     try {
+        $packagedPluginAssemblies = @($archive.Entries | Where-Object { $_.FullName -match "^lib/net48/Plugins/[^/]+\.dll$" })
         Assert-True ($null -ne $archive.GetEntry("lib/net48/Plugins/$packageId.dll")) "Pacote contem a DLL principal"
-        Assert-True ($null -ne $archive.GetEntry("lib/net48/Plugins/LucasVerissimo.XrmToolBox.Shared.dll")) "Pacote contem a DLL Shared"
+        Assert-True ($packagedPluginAssemblies.Count -eq 1) "Pacote contem somente a DLL consolidada do plugin"
+        Assert-True ($null -eq $archive.GetEntry("lib/net48/Plugins/LucasVerissimo.XrmToolBox.Shared.dll")) "Pacote nao contem a DLL Shared separada"
         Assert-True ($null -ne $archive.GetEntry("field-change-monitor-128.png")) "Pacote contem o icone"
         Assert-True ($null -ne $archive.GetEntry("README.md")) "Pacote contem o README"
     }

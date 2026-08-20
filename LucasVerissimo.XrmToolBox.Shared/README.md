@@ -1,7 +1,7 @@
 # LucasVerissimo.XrmToolBox.Shared
 
-This project contains reusable Dataverse and WinForms building blocks shared by tools in this solution. It is
-an internal solution library, not an independently installed XrmToolBox tool.
+This Shared Project contains reusable Dataverse and WinForms source imported by tools in this solution. It does
+not produce an assembly and is not an independently installed XrmToolBox tool.
 
 ## Current responsibilities
 
@@ -25,13 +25,13 @@ an internal solution library, not an independently installed XrmToolBox tool.
 
 ## Packaging and compatibility
 
-Every tool that references this project must include the exact compatible
-`LucasVerissimo.XrmToolBox.Shared.dll` in its own NuGet package. XrmToolBox loads plugin assemblies from a
-common directory, so the public Shared API must remain backward compatible across independently released
-tools.
+Tools import `LucasVerissimo.XrmToolBox.Shared.projitems`, so this source is compiled directly into each primary
+plugin assembly. There is no `LucasVerissimo.XrmToolBox.Shared.dll` to distribute.
 
-Do not remove or change an existing public member without evaluating every tool in the solution. A breaking
-change requires an explicit assembly identity and migration strategy.
+This keeps independently versioned tools from overwriting a common DLL in the XrmToolBox plugin directory.
+Each NuGet package contains exactly one versioned assembly under `lib/net48/Plugins`.
+
+Do not remove or change an existing shared member without rebuilding and validating every consuming tool.
 
 See the solution [architecture](../ARCHITECTURE.md) and [engineering rules](../AGENTS.md) for the complete
 boundary and maintenance standards.

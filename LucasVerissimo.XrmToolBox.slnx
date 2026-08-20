@@ -4,7 +4,7 @@
     Id="968d155e-9cd5-4552-9bc4-a95489cbffc8"
   />
   <Project
-    Path="LucasVerissimo.XrmToolBox.Shared\LucasVerissimo.XrmToolBox.Shared.csproj"
+    Path="LucasVerissimo.XrmToolBox.Shared\LucasVerissimo.XrmToolBox.Shared.shproj"
     Id="26d57429-b7d4-49c8-8c1a-9616d0e7e34a"
   />
   <Project

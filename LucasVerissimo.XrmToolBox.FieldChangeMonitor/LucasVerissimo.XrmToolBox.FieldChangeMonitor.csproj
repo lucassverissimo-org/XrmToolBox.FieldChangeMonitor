@@ -256,13 +256,6 @@
     <Compile Include="Settings.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\LucasVerissimo.XrmToolBox.Shared\LucasVerissimo.XrmToolBox.Shared.csproj">
-      <Project>{26D57429-B7D4-49C8-8C1A-9616D0E7E34A}</Project>
-      <Name>LucasVerissimo.XrmToolBox.Shared</Name>
-      <Private>True</Private>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="assets\field-change-monitor-128.png" />
     <None Include="assets\field-change-monitor-80.png" />
     <None Include="assets\field-change-monitor-32.png" />
@@ -271,6 +264,10 @@
     <None Include="LucasVerissimo.XrmToolBox.FieldChangeMonitor.nuspec" />
     <None Include="README.md" />
   </ItemGroup>
+  <Import
+    Project="..\LucasVerissimo.XrmToolBox.Shared\LucasVerissimo.XrmToolBox.Shared.projitems"
+    Label="Shared"
+  />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>

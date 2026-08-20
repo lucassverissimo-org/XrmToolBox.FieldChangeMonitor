@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>LucasVerissimo.XrmToolBox.DataverseUsageExplorer</id>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <title>Dataverse Usage Explorer</title>
     <authors>Lucas Verissimo</authors>
     <owners>Lucas Verissimo</owners>
@@ -14,7 +14,9 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Find where Dataverse tables and columns are used in forms, views, workflows, Power Automate flows, business rules, and plugin steps.</description>
     <summary>Explore dependencies and text references to Dataverse tables and columns.</summary>
-    <releaseNotes>Version 1.0.2 provides an explicit public PNG icon URL for XrmToolBox Tool Library validation.
+    <releaseNotes>Version 1.0.3 compiles the Shared Project source directly into the plugin assembly so the NuGet package contains one versioned plugin DLL and each tool remains independently deployable.
+
+Version 1.0.2 provides an explicit public PNG icon URL for XrmToolBox Tool Library validation.
 
 Version 1.0.1 added a 128 x 128 package icon and dedicated public documentation URL.
 
@@ -28,8 +30,7 @@ Version 1.0.0 introduced table and column usage searches across forms, views, bu
     </dependencies>
   </metadata>
   <files>
-    <file src="..\bin\Release\LucasVerissimo.XrmToolBox.DataverseUsageExplorer.dll" target="lib\net48\Plugins" />
-    <file src="..\bin\Release\LucasVerissimo.XrmToolBox.Shared.dll" target="lib\net48\Plugins" />
+    <file src="..\bin\$configuration$\LucasVerissimo.XrmToolBox.DataverseUsageExplorer.dll" target="lib\net48\Plugins" />
     <file src="Assets\dataverse-usage-explorer-128.png" target="" />
     <file src="README.md" target="" />
   </files>

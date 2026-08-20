@@ -15,7 +15,8 @@ dotnet csharpier check .
 The validation builds the Release package and confirms that:
 
 - the NuGet and plugin assembly versions match;
-- the plugin and Shared assemblies are in `lib/net48/Plugins`;
+- the package contains exactly one plugin assembly in `lib/net48/Plugins`;
+- Shared Project types are compiled into the plugin and there is no external Shared assembly reference;
 - the Field Change Monitor assembly is absent;
 - the README and icon are present;
 - debug symbols and known host dependencies are not bundled.
@@ -41,7 +42,7 @@ The validation builds the Release package and confirms that:
 Package publication is permanent for a given version. Confirm the final version before pushing.
 
 ```powershell
-nuget push .\bin\Release\LucasVerissimo.XrmToolBox.DataverseUsageExplorer.1.0.2.nupkg `
+nuget push .\bin\Release\LucasVerissimo.XrmToolBox.DataverseUsageExplorer.1.0.3.nupkg `
   -Source https://api.nuget.org/v3/index.json `
   -ApiKey $env:NUGET_API_KEY
 ```

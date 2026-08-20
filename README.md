@@ -12,9 +12,9 @@ project, assembly, NuGet package, documentation, version, and release lifecycle.
 
 ## Shared library
 
-[`LucasVerissimo.XrmToolBox.Shared`](LucasVerissimo.XrmToolBox.Shared/README.md) contains reusable Dataverse
-and WinForms building blocks used by more than one tool. It is not an XrmToolBox tool and is not published or
-installed independently.
+[`LucasVerissimo.XrmToolBox.Shared`](LucasVerissimo.XrmToolBox.Shared/README.md) is a Shared Project containing
+reusable Dataverse and WinForms source compiled into each consuming tool. It is not an XrmToolBox tool and is
+not published or installed independently.
 
 ## Solution standards
 

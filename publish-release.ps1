@@ -152,8 +152,13 @@ try {
     $nuspecEntry = $archive.GetEntry("$packageId.nuspec")
     $dllEntry = $archive.GetEntry("lib/net48/Plugins/$packageId.dll")
     $sharedDllEntry = $archive.GetEntry("lib/net48/Plugins/LucasVerissimo.XrmToolBox.Shared.dll")
-    if ($null -eq $nuspecEntry -or $null -eq $dllEntry -or $null -eq $sharedDllEntry) {
-        throw "O pacote nao contem o nuspec, a DLL do plugin ou a DLL Shared na pasta lib/net48/Plugins."
+    $pluginDllEntries = @($archive.Entries | Where-Object { $_.FullName -match '^lib/net48/Plugins/[^/]+\.dll$' })
+    if ($null -eq $nuspecEntry -or $null -eq $dllEntry) {
+        throw "O pacote nao contem o nuspec ou a DLL do plugin na pasta lib/net48/Plugins."
+    }
+
+    if ($null -ne $sharedDllEntry -or $pluginDllEntries.Count -ne 1) {
+        throw "O pacote deve conter somente a DLL consolidada do plugin na pasta lib/net48/Plugins."
     }
 
     $reader = [System.IO.StreamReader]::new($nuspecEntry.Open())

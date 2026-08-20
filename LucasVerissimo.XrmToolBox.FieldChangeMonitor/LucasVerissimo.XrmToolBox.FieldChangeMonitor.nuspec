@@ -31,8 +31,7 @@ Correções nos fluxos de criação, edição, remoção e atualização da inte
     </dependencies>
   </metadata>
   <files>
-    <file src="..\bin\Release\LucasVerissimo.XrmToolBox.FieldChangeMonitor.dll" target="lib\net48\Plugins" />
-    <file src="..\bin\Release\LucasVerissimo.XrmToolBox.Shared.dll" target="lib\net48\Plugins" />
+    <file src="..\bin\$configuration$\LucasVerissimo.XrmToolBox.FieldChangeMonitor.dll" target="lib\net48\Plugins" />
     <file src="assets\field-change-monitor-128.png" target="" />
     <file src="README.md" target="" />
   </files>

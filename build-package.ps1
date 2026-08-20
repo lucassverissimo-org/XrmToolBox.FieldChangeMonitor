@@ -3,23 +3,28 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+Set-StrictMode -Version Latest
 
-dotnet build .\LucasVerissimo.XrmToolBox.FieldChangeMonitor\LucasVerissimo.XrmToolBox.FieldChangeMonitor.csproj -c $Configuration
+$packageId = "LucasVerissimo.XrmToolBox.FieldChangeMonitor"
+$projectPath = Join-Path $PSScriptRoot "$packageId\$packageId.csproj"
+$specificationPath = Join-Path $PSScriptRoot "$packageId\$packageId.nuspec"
+$outputDirectory = Join-Path $PSScriptRoot "bin\$Configuration"
+$nugetPath = Join-Path $PSScriptRoot "obj\tools\nuget.exe"
+
+dotnet build $projectPath -c $Configuration
 if ($LASTEXITCODE -ne 0) {
-    throw "A compilacao falhou. O pacote nao sera criado."
+    throw "The Field Change Monitor build failed. The package will not be created."
 }
 
-$nuget = Get-Command nuget -ErrorAction SilentlyContinue
-if ($nuget) {
-    & $nuget.Source pack .\LucasVerissimo.XrmToolBox.FieldChangeMonitor\LucasVerissimo.XrmToolBox.FieldChangeMonitor.nuspec -Properties Configuration=$Configuration -OutputDirectory .\bin\$Configuration
-    exit $LASTEXITCODE
+if (-not (Test-Path $nugetPath)) {
+    New-Item -ItemType Directory -Force -Path (Split-Path $nugetPath -Parent) | Out-Null
+    Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile $nugetPath
 }
 
-$localNuget = Join-Path $PSScriptRoot "obj\nuget\nuget.exe"
-if (-not (Test-Path $localNuget)) {
-    New-Item -ItemType Directory -Force -Path (Split-Path $localNuget) | Out-Null
-    Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile $localNuget
-}
+& $nugetPath pack $specificationPath `
+    -Properties "Configuration=$Configuration" `
+    -OutputDirectory $outputDirectory
 
-& $localNuget pack .\LucasVerissimo.XrmToolBox.FieldChangeMonitor\LucasVerissimo.XrmToolBox.FieldChangeMonitor.nuspec -Properties Configuration=$Configuration -OutputDirectory .\bin\$Configuration
-exit $LASTEXITCODE
+if ($LASTEXITCODE -ne 0) {
+    throw "NuGet failed to create the Field Change Monitor package."
+}

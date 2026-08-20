@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>{26D57429-B7D4-49C8-8C1A-9616D0E7E34A}</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>LucasVerissimo.XrmToolBox.Shared</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)BusinessLogic\DataverseMetadataService.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)BusinessLogic\DataverseQueryService.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)BusinessLogic\MetadataLabelResolver.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)LookupValuePickerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)OptionSetValuePickerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+  </ItemGroup>
+</Project>

@@ -85,12 +85,6 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\LucasVerissimo.XrmToolBox.Shared\LucasVerissimo.XrmToolBox.Shared.csproj">
-      <Project>{26D57429-B7D4-49C8-8C1A-9616D0E7E34A}</Project>
-      <Name>LucasVerissimo.XrmToolBox.Shared</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Assets\dataverse-usage-explorer-icon-source.png" />
     <None Include="Assets\dataverse-usage-explorer-32.png" />
     <None Include="Assets\dataverse-usage-explorer-80.png" />
@@ -98,6 +92,10 @@
     <None Include="README.md" />
     <None Include="LucasVerissimo.XrmToolBox.DataverseUsageExplorer.nuspec" />
   </ItemGroup>
+  <Import
+    Project="..\LucasVerissimo.XrmToolBox.Shared\LucasVerissimo.XrmToolBox.Shared.projitems"
+    Label="Shared"
+  />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>

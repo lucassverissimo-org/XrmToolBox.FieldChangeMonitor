@@ -4,11 +4,11 @@ This repository contains two independent XrmToolBox tools and one shared library
 
 - `LucasVerissimo.XrmToolBox.FieldChangeMonitor`: monitoring UI and monitoring rules.
 - `LucasVerissimo.XrmToolBox.DataverseUsageExplorer`: usage-search UI, scanners, and parsers.
-- `LucasVerissimo.XrmToolBox.Shared`: reusable Dataverse and WinForms building blocks.
+- `LucasVerissimo.XrmToolBox.Shared`: a Shared Project containing reusable Dataverse and WinForms source.
 
 ## Dependency direction
 
-Both tools may reference `Shared`. `Shared` must never reference either tool.
+Both tools import `Shared.projitems`. Shared code must never depend on either tool.
 
 ```text
 FieldChangeMonitor ───────┐
@@ -43,9 +43,14 @@ UI models, scanner rules, monitoring rules, and component-opening behavior stay 
 
 ## Independent releases
 
-Each tool keeps its own assembly, version, NuGet specification, and release process. A package that consumes
-`Shared` must include the exact compatible `LucasVerissimo.XrmToolBox.Shared.dll` used during its build.
+Each tool keeps its own assembly, version, NuGet specification, and release process. The Shared Project source
+is compiled directly into every consuming tool. It does not produce `LucasVerissimo.XrmToolBox.Shared.dll`.
+Each NuGet package contains exactly one DLL under `lib/net48/Plugins`.
 
-Because XrmToolBox loads plugins from a common directory, changes to the public API of `Shared` must be
-backward compatible. Breaking changes require a new shared assembly identity instead of replacing the existing
-assembly used by an already-published tool.
+This packaging boundary prevents independently versioned tools from overwriting a common Shared DLL in the
+XrmToolBox plugin directory. It also ensures that the XrmToolBox portal validates only the assembly whose
+version matches the package. `Shared` is never published independently.
+
+Changes to shared source must be evaluated by rebuilding every consuming tool. Release validation must confirm
+that the plugin assembly has no external Shared assembly reference and contains the required Shared Project
+types.
