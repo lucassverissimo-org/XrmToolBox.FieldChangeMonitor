@@ -1,0 +1,14 @@
+{
+  "name": "Solution Layer Analyzer",
+  "packageId": "LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer",
+  "projectPath": "LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.csproj",
+  "nuspecPath": "LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.nuspec",
+  "assemblyInfoPath": "Properties/AssemblyInfo.cs",
+  "packageScriptPath": "../build-solution-layer-analyzer-package.ps1",
+  "gitUrl": "https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/tree/main/LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer",
+  "nuGetUrl": "https://www.nuget.org/packages/LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer",
+  "targetFramework": ".NET Framework 4.8",
+  "validationScripts": [
+    "../tests/solution-layer-analyzer-release-tests.ps1"
+  ]
+}

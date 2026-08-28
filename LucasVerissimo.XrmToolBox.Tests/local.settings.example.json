@@ -1,0 +1,7 @@
+{
+  "Dataverse": {
+    "SourceConnectionString": "AuthType=ClientSecret;Url=https://source.crm.dynamics.com;ClientId=<client-id>;ClientSecret=<client-secret>;TenantId=<tenant-id>",
+    "TargetConnectionString": "AuthType=ClientSecret;Url=https://target.crm.dynamics.com;ClientId=<client-id>;ClientSecret=<client-secret>;TenantId=<tenant-id>",
+    "SolutionUniqueName": "CRMRelease63"
+  }
+}

@@ -74,6 +74,7 @@ Plugins/
 !.env.example
 appsettings.*.local.json
 secrets.json
+/LucasVerissimo.XrmToolBox.Tests/local.settings.json
 *.publishsettings
 *.pfx
 *.p12

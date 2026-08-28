@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 [assembly: AssemblyTitle("Dataverse Usage Explorer for XrmToolBox")]
@@ -9,3 +10,4 @@ using System.Runtime.InteropServices;
 [assembly: Guid("c4820e2a-19f8-4dd8-a89c-cf99620f9ec9")]
 [assembly: AssemblyVersion("1.0.3.0")]
 [assembly: AssemblyFileVersion("1.0.3.0")]
+[assembly: InternalsVisibleTo("LucasVerissimo.XrmToolBox.Tests")]

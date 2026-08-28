@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer</id>
+    <version>1.0.0</version>
+    <title>Solution Layer Analyzer</title>
+    <authors>Lucas Verissimo</authors>
+    <owners>Lucas Verissimo</owners>
+    <projectUrl>https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/tree/main/LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer</projectUrl>
+    <repository type="git" url="https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor.git" branch="main" />
+    <icon>solution-layer-analyzer-128.png</icon>
+    <readme>README.md</readme>
+    <license type="expression">MIT</license>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Compare Dataverse solution composition across Source and Target environments, inspect Active Layers incrementally, export diagnostics, back up selected components, and remove explicitly selected active customizations with revalidation.</description>
+    <summary>Analyze Dataverse solution layers and ALM differences across environments.</summary>
+    <releaseNotes>Version 1.0.0 introduces multi-environment solution composition comparison, incremental batched layer analysis, retry and throttling metrics, CSV export, optional selected-component backup, explicit Active Layer removal, and post-removal validation.</releaseNotes>
+    <copyright>Copyright (c) Lucas Verissimo 2026</copyright>
+    <tags>XrmToolBox Dataverse Dynamics365 Solution Layers ALM Active Layer Analyzer</tags>
+    <dependencies>
+      <group targetFramework=".NETFramework4.8">
+        <dependency id="XrmToolBox" version="1.2025.7.71" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="..\bin\$configuration$\LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.dll" target="lib\net48\Plugins" />
+    <file src="Assets\solution-layer-analyzer-128.png" target="" />
+    <file src="README.md" target="" />
+  </files>
+</package>
