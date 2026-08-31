@@ -12,11 +12,32 @@
     <Compile Include="$(MSBuildThisFileDirectory)BusinessLogic\DataverseMetadataService.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)BusinessLogic\DataverseQueryService.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)BusinessLogic\MetadataLabelResolver.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Controls\GridPickerConfiguration.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Controls\GridPickerControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)Controls\GridPickerControl.Designer.cs">
+      <DependentUpon>GridPickerControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)Controls\GridPickerPopup.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="$(MSBuildThisFileDirectory)Controls\GridPickerPopup.Designer.cs">
+      <DependentUpon>GridPickerPopup.cs</DependentUpon>
+    </Compile>
     <Compile Include="$(MSBuildThisFileDirectory)LookupValuePickerForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="$(MSBuildThisFileDirectory)OptionSetValuePickerForm.cs">
       <SubType>Form</SubType>
     </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)Controls\GridPickerControl.resx">
+      <DependentUpon>GridPickerControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)Controls\GridPickerPopup.resx">
+      <DependentUpon>GridPickerPopup.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>

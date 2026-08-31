@@ -1,15 +1,64 @@
+using System;
 using System.Text;
 using System.Windows.Forms;
 using LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Models;
+using LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Services;
 
 namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
 {
     internal partial class UsageDetailsForm : Form
     {
-        public UsageDetailsForm(UsageReference item)
+        private readonly ComponentNavigationTarget navigationTarget;
+
+        public UsageDetailsForm(
+            UsageReference item,
+            string environmentUrl,
+            DefaultSolutionNavigationContext defaultSolution
+        )
         {
+            if (item == null)
+            {
+                throw new ArgumentNullException(nameof(item));
+            }
+
             InitializeComponent();
             detailsTextBox.Text = BuildDetails(item);
+            navigationTarget = ComponentNavigationService.Resolve(
+                item,
+                environmentUrl,
+                defaultSolution
+            );
+            ConfigureComponentLink();
+        }
+
+        private void ConfigureComponentLink()
+        {
+            componentLinkLabel.Visible = navigationTarget.CanOpen;
+            componentLinkLabel.Text = navigationTarget.LinkText ?? string.Empty;
+            navigationMessageLabel.Visible = !navigationTarget.CanOpen;
+            navigationMessageLabel.Text = navigationTarget.UnavailableReason ?? string.Empty;
+        }
+
+        private void ComponentLinkLabelLinkClicked(
+            object sender,
+            LinkLabelLinkClickedEventArgs eventArguments
+        )
+        {
+            try
+            {
+                ComponentNavigationService.Open(navigationTarget);
+                componentLinkLabel.LinkVisited = true;
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(
+                    this,
+                    exception.Message,
+                    "Unable to open component",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
         }
 
         private static string BuildDetails(UsageReference item)

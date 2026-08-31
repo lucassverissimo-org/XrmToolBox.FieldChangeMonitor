@@ -19,6 +19,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
 
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.rootLayout = new System.Windows.Forms.TableLayoutPanel();
             this.titleLabel = new System.Windows.Forms.Label();
             this.criteriaLayout = new System.Windows.Forms.TableLayoutPanel();
@@ -29,20 +30,20 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             this.tableStep = new System.Windows.Forms.GroupBox();
             this.tableLayout = new System.Windows.Forms.TableLayoutPanel();
             this.tableHintLabel = new System.Windows.Forms.Label();
-            this.tables = new LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Controls.SearchableMetadataComboBox();
+            this.tables = new LucasVerissimo.XrmToolBox.Shared.Controls.GridPickerControl();
             this.loadTables = new System.Windows.Forms.Button();
             this.selectedTableInfo = new System.Windows.Forms.Label();
             this.stepArrowLabel = new System.Windows.Forms.Label();
             this.columnStep = new System.Windows.Forms.GroupBox();
             this.columnLayout = new System.Windows.Forms.TableLayoutPanel();
             this.columnHintLabel = new System.Windows.Forms.Label();
-            this.columns = new LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Controls.SearchableMetadataComboBox();
+            this.columns = new LucasVerissimo.XrmToolBox.Shared.Controls.GridPickerControl();
             this.selectedColumnInfo = new System.Windows.Forms.Label();
             this.searchAreaLayout = new System.Windows.Forms.TableLayoutPanel();
             this.searchInLabel = new System.Windows.Forms.Label();
-            this.scannerList = new System.Windows.Forms.CheckedListBox();
+            this.scannerList = new LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Controls.ScannerSelectionControl();
             this.actionsPanel = new System.Windows.Forms.FlowLayoutPanel();
-            this.scan = new System.Windows.Forms.Button();
+            this.scan = new LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Controls.LoadingButton();
             this.cancel = new System.Windows.Forms.Button();
             this.resultPanel = new System.Windows.Forms.TableLayoutPanel();
             this.filtersPanel = new System.Windows.Forms.FlowLayoutPanel();
@@ -61,7 +62,15 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             this.confidenceColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.modifiedOnColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.idColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.footerLayout = new System.Windows.Forms.TableLayoutPanel();
             this.status = new System.Windows.Forms.Label();
+            this.legendPanel = new System.Windows.Forms.FlowLayoutPanel();
+            this.waitingLegend = new System.Windows.Forms.Label();
+            this.runningLegend = new System.Windows.Forms.Label();
+            this.completedLegend = new System.Windows.Forms.Label();
+            this.failedLegend = new System.Windows.Forms.Label();
+            this.cancelledLegend = new System.Windows.Forms.Label();
+            this.scanProgressTimer = new System.Windows.Forms.Timer(this.components);
             this.rootLayout.SuspendLayout();
             this.criteriaLayout.SuspendLayout();
             this.searchModePanel.SuspendLayout();
@@ -74,6 +83,8 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             this.resultPanel.SuspendLayout();
             this.filtersPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.grid)).BeginInit();
+            this.footerLayout.SuspendLayout();
+            this.legendPanel.SuspendLayout();
             this.SuspendLayout();
             //
             // rootLayout
@@ -83,7 +94,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             this.rootLayout.Controls.Add(this.titleLabel, 0, 0);
             this.rootLayout.Controls.Add(this.criteriaLayout, 0, 1);
             this.rootLayout.Controls.Add(this.resultPanel, 0, 2);
-            this.rootLayout.Controls.Add(this.status, 0, 3);
+            this.rootLayout.Controls.Add(this.footerLayout, 0, 3);
             this.rootLayout.Dock = System.Windows.Forms.DockStyle.Fill;
             this.rootLayout.Location = new System.Drawing.Point(0, 0);
             this.rootLayout.Name = "rootLayout";
@@ -225,7 +236,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             this.tables.Name = "tables";
             this.tables.Size = new System.Drawing.Size(437, 23);
             this.tables.TabIndex = 0;
-            this.tables.SelectedIndexChanged += new System.EventHandler(this.TablesSelectedIndexChanged);
+            this.tables.SelectedItemChanged += new System.EventHandler(this.TablesSelectedItemChanged);
             //
             // loadTables
             //
@@ -295,7 +306,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             this.columns.Name = "columns";
             this.columns.Size = new System.Drawing.Size(528, 23);
             this.columns.TabIndex = 0;
-            this.columns.SelectedIndexChanged += new System.EventHandler(this.ColumnsSelectedIndexChanged);
+            this.columns.SelectedItemChanged += new System.EventHandler(this.ColumnsSelectedItemChanged);
             //
             // selectedColumnInfo
             //
@@ -329,19 +340,9 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             //
             // scannerList
             //
-            this.scannerList.CheckOnClick = true;
             this.scannerList.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.scannerList.FormattingEnabled = true;
-            this.scannerList.Items.AddRange(new object[] { "Business Rules", "Power Automate", "Classic Workflows", "Business Process Flows", "Forms", "Views", "Plugin Steps" });
-            this.scannerList.SetItemChecked(0, true);
-            this.scannerList.SetItemChecked(1, true);
-            this.scannerList.SetItemChecked(2, true);
-            this.scannerList.SetItemChecked(3, true);
-            this.scannerList.SetItemChecked(4, true);
-            this.scannerList.SetItemChecked(5, true);
-            this.scannerList.SetItemChecked(6, true);
             this.scannerList.Name = "scannerList";
-            this.scannerList.Size = new System.Drawing.Size(530, 64);
+            this.scannerList.Size = new System.Drawing.Size(530, 92);
             this.scannerList.TabIndex = 0;
             //
             // actionsPanel
@@ -509,11 +510,52 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             this.idColumn.ReadOnly = true;
             this.idColumn.Width = 220;
             //
+            // footerLayout
+            //
+            this.footerLayout.AutoSize = true;
+            this.footerLayout.ColumnCount = 2;
+            this.footerLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.footerLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.footerLayout.Controls.Add(this.status, 0, 0);
+            this.footerLayout.Controls.Add(this.legendPanel, 1, 0);
+            this.footerLayout.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.footerLayout.Name = "footerLayout";
+            this.footerLayout.RowCount = 1;
+            this.footerLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            //
             // status
             //
             this.status.AutoSize = true;
+            this.status.Dock = System.Windows.Forms.DockStyle.Fill;
             this.status.ForeColor = System.Drawing.Color.DimGray;
             this.status.Text = "Connect to Dataverse to begin.";
+            this.status.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            //
+            // legendPanel
+            //
+            this.legendPanel.AutoSize = true;
+            this.legendPanel.Controls.Add(this.waitingLegend);
+            this.legendPanel.Controls.Add(this.runningLegend);
+            this.legendPanel.Controls.Add(this.completedLegend);
+            this.legendPanel.Controls.Add(this.failedLegend);
+            this.legendPanel.Controls.Add(this.cancelledLegend);
+            this.legendPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.legendPanel.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
+            this.legendPanel.Name = "legendPanel";
+            this.legendPanel.WrapContents = false;
+            //
+            // legend labels
+            //
+            ConfigureLegendLabel(this.waitingLegend, "waitingLegend", "○ Waiting", System.Drawing.Color.SlateGray);
+            ConfigureLegendLabel(this.runningLegend, "runningLegend", "◐ Running", System.Drawing.Color.RoyalBlue);
+            ConfigureLegendLabel(this.completedLegend, "completedLegend", "✓ Completed", System.Drawing.Color.SeaGreen);
+            ConfigureLegendLabel(this.failedLegend, "failedLegend", "! Failed", System.Drawing.Color.Firebrick);
+            ConfigureLegendLabel(this.cancelledLegend, "cancelledLegend", "■ Cancelled", System.Drawing.Color.DarkOrange);
+            //
+            // scanProgressTimer
+            //
+            this.scanProgressTimer.Interval = 150;
+            this.scanProgressTimer.Tick += new System.EventHandler(this.ScanProgressTimerTick);
             //
             // UsageExplorerControl
             //
@@ -545,7 +587,25 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             this.filtersPanel.ResumeLayout(false);
             this.filtersPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.grid)).EndInit();
+            this.footerLayout.ResumeLayout(false);
+            this.footerLayout.PerformLayout();
+            this.legendPanel.ResumeLayout(false);
+            this.legendPanel.PerformLayout();
             this.ResumeLayout(false);
+        }
+
+        private static void ConfigureLegendLabel(
+            System.Windows.Forms.Label label,
+            string name,
+            string text,
+            System.Drawing.Color color
+        )
+        {
+            label.AutoSize = true;
+            label.ForeColor = color;
+            label.Margin = new System.Windows.Forms.Padding(10, 0, 0, 0);
+            label.Name = name;
+            label.Text = text;
         }
 
         #endregion
@@ -560,20 +620,20 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
         private System.Windows.Forms.GroupBox tableStep;
         private System.Windows.Forms.TableLayoutPanel tableLayout;
         private System.Windows.Forms.Label tableHintLabel;
-        private Controls.SearchableMetadataComboBox tables;
+        private LucasVerissimo.XrmToolBox.Shared.Controls.GridPickerControl tables;
         private System.Windows.Forms.Button loadTables;
         private System.Windows.Forms.Label selectedTableInfo;
         private System.Windows.Forms.Label stepArrowLabel;
         private System.Windows.Forms.GroupBox columnStep;
         private System.Windows.Forms.TableLayoutPanel columnLayout;
         private System.Windows.Forms.Label columnHintLabel;
-        private Controls.SearchableMetadataComboBox columns;
+        private LucasVerissimo.XrmToolBox.Shared.Controls.GridPickerControl columns;
         private System.Windows.Forms.Label selectedColumnInfo;
         private System.Windows.Forms.TableLayoutPanel searchAreaLayout;
         private System.Windows.Forms.Label searchInLabel;
-        private System.Windows.Forms.CheckedListBox scannerList;
+        private LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Controls.ScannerSelectionControl scannerList;
         private System.Windows.Forms.FlowLayoutPanel actionsPanel;
-        private System.Windows.Forms.Button scan;
+        private LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Controls.LoadingButton scan;
         private System.Windows.Forms.Button cancel;
         private System.Windows.Forms.TableLayoutPanel resultPanel;
         private System.Windows.Forms.FlowLayoutPanel filtersPanel;
@@ -592,6 +652,14 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
         private System.Windows.Forms.DataGridViewTextBoxColumn confidenceColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn modifiedOnColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn idColumn;
+        private System.Windows.Forms.TableLayoutPanel footerLayout;
         private System.Windows.Forms.Label status;
+        private System.Windows.Forms.FlowLayoutPanel legendPanel;
+        private System.Windows.Forms.Label waitingLegend;
+        private System.Windows.Forms.Label runningLegend;
+        private System.Windows.Forms.Label completedLegend;
+        private System.Windows.Forms.Label failedLegend;
+        private System.Windows.Forms.Label cancelledLegend;
+        private System.Windows.Forms.Timer scanProgressTimer;
     }
 }

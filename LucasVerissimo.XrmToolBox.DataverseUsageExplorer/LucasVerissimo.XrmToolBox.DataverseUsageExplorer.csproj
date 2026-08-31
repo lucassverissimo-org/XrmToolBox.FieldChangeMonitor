@@ -54,12 +54,25 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Models\UsageModels.cs" />
-    <Compile Include="Controls\SearchableMetadataComboBox.cs">
+    <Compile Include="Controls\LoadingButton.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Controls\LoadingButton.Designer.cs">
+      <DependentUpon>LoadingButton.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\ScannerSelectionControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\ScannerSelectionControl.Designer.cs">
+      <DependentUpon>ScannerSelectionControl.cs</DependentUpon>
+    </Compile>
     <Compile Include="Services\DataverseServices.cs" />
+    <Compile Include="Services\ComponentNavigationService.cs" />
+    <Compile Include="Services\DefaultSolutionNavigationService.cs" />
     <Compile Include="Scanners\Scanners.cs" />
+    <Compile Include="Scanners\WebResourceUsageScanner.cs" />
     <Compile Include="Parsers\ReferenceParsers.cs" />
+    <Compile Include="Parsers\WebResourceContentParser.cs" />
     <Compile Include="UsageExplorerControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -77,6 +90,12 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Controls\LoadingButton.resx">
+      <DependentUpon>LoadingButton.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Controls\ScannerSelectionControl.resx">
+      <DependentUpon>ScannerSelectionControl.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="UsageExplorerControl.resx">
       <DependentUpon>UsageExplorerControl.cs</DependentUpon>
     </EmbeddedResource>

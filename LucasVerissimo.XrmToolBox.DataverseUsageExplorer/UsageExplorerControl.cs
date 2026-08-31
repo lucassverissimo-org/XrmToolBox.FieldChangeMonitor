@@ -1,14 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Models;
 using LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Scanners;
 using LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Services;
+using LucasVerissimo.XrmToolBox.Shared.Controls;
 using McTools.Xrm.Connection;
 using Microsoft.Xrm.Sdk;
 using XrmToolBox.Extensibility;
@@ -17,14 +18,69 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
 {
     public partial class UsageExplorerControl : PluginControlBase
     {
+        private const int MaximumConcurrentScanners = 4;
+
         private MetadataService metadata;
+        private DefaultSolutionNavigationService defaultSolutionNavigation;
         private CancellationTokenSource cancellation;
         private List<UsageReference> results = new List<UsageReference>();
         private string environmentUrl;
+        private readonly ScanProgressBuffer scanProgressBuffer = new ScanProgressBuffer();
 
         public UsageExplorerControl()
         {
             InitializeComponent();
+            ConfigureMetadataPickers();
+        }
+
+        private void ConfigureMetadataPickers()
+        {
+            tables.Configure(CreateMetadataPickerConfiguration("tables"));
+            columns.Configure(CreateMetadataPickerConfiguration("columns"));
+        }
+
+        private static GridPickerConfiguration CreateMetadataPickerConfiguration(string itemName)
+        {
+            return new GridPickerConfiguration
+            {
+                ItemName = itemName,
+                SearchEnabled = true,
+                SortingEnabled = true,
+                DisplayTextSelector = item =>
+                {
+                    var metadataItem = (MetadataListItem)item;
+                    return metadataItem.DisplayName + "  —  " + metadataItem.LogicalName;
+                },
+                IdentitySelector = item => ((MetadataListItem)item).LogicalName,
+                SearchPredicate = (item, search) =>
+                {
+                    var metadataItem = (MetadataListItem)item;
+                    return ContainsIgnoreCase(metadataItem.DisplayName, search)
+                        || ContainsIgnoreCase(metadataItem.LogicalName, search);
+                },
+                Columns = new[]
+                {
+                    new GridPickerColumnDefinition(
+                        "Display Name",
+                        item => ((MetadataListItem)item).DisplayName
+                    )
+                    {
+                        FillWeight = 55F,
+                    },
+                    new GridPickerColumnDefinition(
+                        "Logical Name",
+                        item => ((MetadataListItem)item).LogicalName
+                    )
+                    {
+                        FillWeight = 45F,
+                    },
+                },
+            };
+        }
+
+        private static bool ContainsIgnoreCase(string value, string search)
+        {
+            return value?.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         public override void UpdateConnection(
@@ -36,6 +92,10 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
         {
             base.UpdateConnection(newService, detail, actionName, parameter);
             metadata = newService == null ? null : new MetadataService(newService);
+            defaultSolutionNavigation =
+                newService == null
+                    ? null
+                    : new DefaultSolutionNavigationService(newService, detail?.EnvironmentId);
             environmentUrl =
                 detail == null
                     ? null
@@ -69,7 +129,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             ExecuteMethod(LoadTableMetadata);
         }
 
-        private void TablesSelectedIndexChanged(object sender, EventArgs e)
+        private void TablesSelectedItemChanged(object sender, EventArgs e)
         {
             UpdateTableSelection();
         }
@@ -84,18 +144,20 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             }
         }
 
-        private void ColumnsSelectedIndexChanged(object sender, EventArgs e)
+        private void ColumnsSelectedItemChanged(object sender, EventArgs e)
         {
             UpdateColumnSelection();
         }
 
-        private void ScanClick(object sender, EventArgs e)
+        private async void ScanClick(object sender, EventArgs e)
         {
-            ExecuteMethod(StartScan);
+            await StartScan();
         }
 
         private void CancelClick(object sender, EventArgs e)
         {
+            cancel.Enabled = false;
+            cancel.Text = "Cancelling...";
             cancellation?.Cancel();
         }
 
@@ -107,7 +169,13 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             }
 
             var selectedItem = (UsageReference)grid.Rows[e.RowIndex].DataBoundItem;
-            using (var detailsForm = new UsageDetailsForm(selectedItem))
+            using (
+                var detailsForm = new UsageDetailsForm(
+                    selectedItem,
+                    environmentUrl,
+                    GetDefaultSolutionNavigationContext()
+                )
+            )
             {
                 detailsForm.ShowDialog(this);
             }
@@ -245,7 +313,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             );
         }
 
-        private void StartScan()
+        private async Task StartScan()
         {
             if (
                 Service == null
@@ -271,77 +339,151 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
                 ColumnLogicalName = SelectedColumn,
             };
             var scanners = CreateScanners()
-                .Where(x => scannerList.CheckedItems.Cast<string>().Contains(DisplayName(x.Name)))
+                .Where(scanner => scannerList.CheckedItems.Contains(DisplayName(scanner.Name)))
                 .ToList();
-            cancellation = new CancellationTokenSource();
-            scan.Enabled = false;
-            cancel.Enabled = true;
+            if (scanners.Count == 0)
+            {
+                MessageBox.Show(
+                    this,
+                    "Select at least one component type.",
+                    "Dataverse Usage Explorer",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
+                return;
+            }
+
+            var scanCancellation = new CancellationTokenSource();
+            cancellation = scanCancellation;
             status.Text = "Scanning...";
-            WorkAsync(
-                new WorkAsyncInfo
+            ResetResultsForScan();
+            scannerList.BeginScan(scanners.Select(scanner => DisplayName(scanner.Name)));
+            SetScanRunningState(true);
+
+            scanProgressBuffer.Clear();
+            scanProgressTimer.Start();
+            try
+            {
+                var scannerResults = await Task.Run(() =>
+                    ExecuteScannersInParallel(
+                        scanners,
+                        context,
+                        scanCancellation.Token,
+                        scanProgressBuffer.Publish
+                    )
+                );
+                FlushScanProgress();
+                ShowResults(scannerResults);
+            }
+            catch (OperationCanceledException)
+            {
+                FlushScanProgress();
+                scannerList.FinishCancellation();
+                status.Text =
+                    "Scan cancelled. "
+                    + results.Count
+                    + " reference(s) found before cancellation were preserved.";
+            }
+            catch (Exception error)
+            {
+                ShowError(error, "Scan failed");
+            }
+            finally
+            {
+                scanProgressTimer.Stop();
+                FlushScanProgress();
+                if (ReferenceEquals(cancellation, scanCancellation))
                 {
-                    Message = "Scanning Dataverse components...",
-                    Work = (worker, a) =>
-                    {
-                        var output = new List<ScannerResult>();
-                        foreach (var scanner in scanners)
-                        {
-                            try
-                            {
-                                cancellation.Token.ThrowIfCancellationRequested();
-                                output.Add(
-                                    new ScannerResult
-                                    {
-                                        ScannerName = scanner.Name,
-                                        References = scanner.Scan(
-                                            context,
-                                            cancellation.Token,
-                                            (name, current, total) =>
-                                                worker.ReportProgress(
-                                                    total == 0 ? 0 : current * 100 / total,
-                                                    name + ": " + current + "/" + total
-                                                )
-                                        ),
-                                    }
-                                );
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                throw;
-                            }
-                            catch (Exception ex)
-                            {
-                                output.Add(
-                                    new ScannerResult
-                                    {
-                                        ScannerName = scanner.Name,
-                                        References = new List<UsageReference>(),
-                                        Error = ex,
-                                    }
-                                );
-                            }
-                        }
-                        a.Result = output;
-                    },
-                    ProgressChanged = a => status.Text = Convert.ToString(a.UserState),
-                    PostWorkCallBack = a =>
-                    {
-                        scan.Enabled = Service != null;
-                        cancel.Enabled = false;
-                        if (a.Error is OperationCanceledException)
-                        {
-                            status.Text = "Scan cancelled.";
-                            return;
-                        }
-                        if (a.Error != null)
-                        {
-                            ShowError(a.Error, "Scan failed");
-                            return;
-                        }
-                        ShowResults((List<ScannerResult>)a.Result);
-                    },
+                    cancellation = null;
                 }
-            );
+
+                scanCancellation.Dispose();
+                scannerList.EndScan();
+                SetScanRunningState(false);
+            }
+        }
+
+        private static List<ScannerResult> ExecuteScannersInParallel(
+            IReadOnlyCollection<IUsageScanner> scanners,
+            UsageSearchContext context,
+            CancellationToken token,
+            Action<ScanProgressState> reportProgress
+        )
+        {
+            using (var concurrencyGate = new SemaphoreSlim(MaximumConcurrentScanners))
+            {
+                var scannerTasks = scanners
+                    .Select(scanner =>
+                        Task.Run(
+                            () =>
+                            {
+                                concurrencyGate.Wait(token);
+                                try
+                                {
+                                    reportProgress(ScanProgressState.Started(scanner.Name));
+                                    return ExecuteScanner(scanner, context, token, reportProgress);
+                                }
+                                finally
+                                {
+                                    concurrencyGate.Release();
+                                }
+                            },
+                            token
+                        )
+                    )
+                    .ToArray();
+
+                return Task.WhenAll(scannerTasks).GetAwaiter().GetResult().ToList();
+            }
+        }
+
+        private static ScannerResult ExecuteScanner(
+            IUsageScanner scanner,
+            UsageSearchContext context,
+            CancellationToken token,
+            Action<ScanProgressState> reportProgress
+        )
+        {
+            ScannerResult scannerResult;
+            try
+            {
+                token.ThrowIfCancellationRequested();
+                scannerResult = new ScannerResult
+                {
+                    ScannerName = scanner.Name,
+                    References = scanner.Scan(
+                        context,
+                        token,
+                        (name, current, total) =>
+                        {
+                            reportProgress(
+                                ScanProgressState.Progress(
+                                    scanner.Name,
+                                    name + ": " + current + "/" + total,
+                                    current,
+                                    total
+                                )
+                            );
+                        }
+                    ),
+                };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception error)
+            {
+                scannerResult = new ScannerResult
+                {
+                    ScannerName = scanner.Name,
+                    References = new List<UsageReference>(),
+                    Error = error,
+                };
+            }
+
+            reportProgress(ScanProgressState.Completed(scannerResult));
+            return scannerResult;
         }
 
         private List<IUsageScanner> CreateScanners()
@@ -350,12 +492,13 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
             return new List<IUsageScanner>
             {
                 new WorkflowUsageScanner(workflows, 2, "Business Rule"),
-                new PowerAutomateUsageScanner(workflows),
-                new WorkflowUsageScanner(workflows, 0, "Classic Workflow"),
-                new WorkflowUsageScanner(workflows, 4, "Business Process Flow"),
                 new FormUsageScanner(),
+                new PowerAutomateUsageScanner(workflows),
                 new ViewUsageScanner(),
+                new WorkflowUsageScanner(workflows, 0, "Classic Workflow"),
                 new PluginStepUsageScanner(),
+                new WorkflowUsageScanner(workflows, 4, "Business Process Flow"),
+                new WebResourceUsageScanner(),
             };
         }
 
@@ -373,31 +516,23 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
                 return "Views";
             if (name == "Plugin Step")
                 return "Plugin Steps";
+            if (name == "Web Resource")
+                return "Web Resources";
             return name;
         }
 
         private void ShowResults(List<ScannerResult> scannerResults)
         {
-            results = DeduplicateByComponentId(scannerResults.SelectMany(x => x.References))
-                .OrderBy(x => x.ComponentType)
-                .ThenBy(x => x.Name)
-                .ToList();
-            componentFilter.Items.Clear();
-            componentFilter.Items.Add("All component types");
-            componentFilter.Items.AddRange(
-                results
-                    .Select(x => x.ComponentType)
-                    .Distinct()
-                    .OrderBy(x => x)
-                    .Cast<object>()
-                    .ToArray()
-            );
-            componentFilter.SelectedIndex = 0;
+            foreach (var scannerResult in scannerResults)
+            {
+                MergeScannerResult(scannerResult);
+            }
+
             ApplyFilter();
             var failures = scannerResults.Where(x => x.Error != null).ToList();
             status.Text =
                 failures.Count == 0
-                    ? "Scan completed successfully."
+                    ? "Scan completed successfully. " + results.Count + " reference(s) found."
                     : "Scan completed; "
                         + failures.Count
                         + " scanner(s) failed: "
@@ -407,16 +542,151 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
                         );
         }
 
-        private static IEnumerable<UsageReference> DeduplicateByComponentId(
-            IEnumerable<UsageReference> references
-        )
+        private void ResetResultsForScan()
         {
-            var ids = new HashSet<Guid>();
-            foreach (var reference in references)
+            results.Clear();
+            componentFilter.Items.Clear();
+            componentFilter.Items.Add("All component types");
+            componentFilter.SelectedIndex = 0;
+            ApplyFilter();
+        }
+
+        private void SetScanRunningState(bool isRunning)
+        {
+            byTable.Enabled = !isRunning;
+            byColumn.Enabled = !isRunning;
+            tables.Enabled = !isRunning;
+            columns.Enabled = !isRunning && byColumn.Checked;
+            loadTables.Enabled = !isRunning && Service != null;
+            componentFilter.Enabled = !isRunning;
+            search.Enabled = !isRunning;
+            openComponent.Enabled =
+                SelectedReference != null && !string.IsNullOrWhiteSpace(environmentUrl);
+            grid.Enabled = true;
+            cancel.Enabled = isRunning;
+
+            if (isRunning)
             {
-                if (!reference.ComponentId.HasValue || ids.Add(reference.ComponentId.Value))
-                    yield return reference;
+                scan.StartLoading();
             }
+            else
+            {
+                scan.StopLoading();
+                scan.Enabled = Service != null;
+                cancel.Text = "Cancel";
+                UpdateColumnStep();
+            }
+        }
+
+        private void HandleScanProgress(ScanProgressState progressState)
+        {
+            if (progressState == null)
+            {
+                return;
+            }
+
+            if (progressState.CompletedScanner != null)
+            {
+                MergeScannerResult(progressState.CompletedScanner);
+            }
+
+            status.Text = progressState.StatusMessage;
+            switch (progressState.State)
+            {
+                case ScannerProgressKind.Started:
+                    scannerList.MarkStarted(DisplayName(progressState.ScannerName));
+                    break;
+                case ScannerProgressKind.Progress:
+                    scannerList.MarkProgress(
+                        DisplayName(progressState.ScannerName),
+                        progressState.Current,
+                        progressState.Total
+                    );
+                    break;
+                case ScannerProgressKind.Completed:
+                    if (progressState.CompletedScanner.Error == null)
+                    {
+                        scannerList.MarkCompleted(
+                            DisplayName(progressState.ScannerName),
+                            progressState.CompletedScanner.References.Count
+                        );
+                    }
+                    else
+                    {
+                        scannerList.MarkFailed(
+                            DisplayName(progressState.ScannerName),
+                            progressState.CompletedScanner.Error.Message
+                        );
+                    }
+
+                    break;
+            }
+        }
+
+        private void ScanProgressTimerTick(object sender, EventArgs eventArguments)
+        {
+            FlushScanProgress();
+        }
+
+        private void FlushScanProgress()
+        {
+            foreach (var progressState in scanProgressBuffer.Drain())
+            {
+                HandleScanProgress(progressState);
+            }
+        }
+
+        private void MergeScannerResult(ScannerResult scannerResult)
+        {
+            if (scannerResult == null || scannerResult.References == null)
+            {
+                return;
+            }
+
+            var knownIds = new HashSet<Guid>(
+                results.Where(x => x.ComponentId.HasValue).Select(x => x.ComponentId.Value)
+            );
+            var newReferences = scannerResult.References.Where(reference =>
+                !reference.ComponentId.HasValue || knownIds.Add(reference.ComponentId.Value)
+            );
+
+            results.AddRange(newReferences);
+            results = results.OrderBy(x => x.ComponentType).ThenBy(x => x.Name).ToList();
+
+            RefreshComponentFilter();
+            ApplyFilter();
+        }
+
+        private void RefreshComponentFilter()
+        {
+            var selectedType = componentFilter.SelectedItem as string;
+            var componentTypes = results
+                .Select(x => x.ComponentType)
+                .Distinct()
+                .OrderBy(x => x)
+                .Cast<object>()
+                .ToArray();
+
+            componentFilter.Items.Clear();
+            componentFilter.Items.Add("All component types");
+            componentFilter.Items.AddRange(componentTypes);
+            componentFilter.SelectedItem =
+                selectedType != null && componentFilter.Items.Contains(selectedType)
+                    ? selectedType
+                    : "All component types";
+        }
+
+        private static string CreateScannerCompletionMessage(ScannerResult scannerResult)
+        {
+            if (scannerResult.Error != null)
+            {
+                return scannerResult.ScannerName + " failed: " + scannerResult.Error.Message;
+            }
+
+            return scannerResult.ScannerName
+                + " completed. "
+                + scannerResult.References.Count
+                + " reference(s) found.";
         }
 
         private void ApplyFilter()
@@ -470,33 +740,144 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
         private void OpenSelectedComponent()
         {
             var item = SelectedReference;
-            if (
-                item == null
-                || !item.ComponentId.HasValue
-                || string.IsNullOrWhiteSpace(environmentUrl)
-            )
+            var navigationTarget = ComponentNavigationService.Resolve(
+                item,
+                environmentUrl,
+                GetDefaultSolutionNavigationContext()
+            );
+            if (!navigationTarget.CanOpen)
+            {
+                MessageBox.Show(
+                    this,
+                    navigationTarget.UnavailableReason,
+                    "Component editor",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
                 return;
-            var entityName = item.ComponentEntityName;
-            if (string.IsNullOrWhiteSpace(entityName))
-                entityName =
-                    item.ComponentType == "Form" ? "systemform"
-                    : item.ComponentType == "View" ? "savedquery"
-                    : item.ComponentType == "Plugin Step" ? "sdkmessageprocessingstep"
-                    : "workflow";
-            var url =
-                environmentUrl.TrimEnd('/')
-                + "/main.aspx?pagetype=entityrecord&etn="
-                + Uri.EscapeDataString(entityName)
-                + "&id="
-                + Uri.EscapeDataString(item.ComponentId.Value.ToString("D"));
+            }
+
             try
             {
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                ComponentNavigationService.Open(navigationTarget);
             }
             catch (Exception ex)
             {
                 ShowError(ex, "Unable to open component");
             }
+        }
+
+        private DefaultSolutionNavigationContext GetDefaultSolutionNavigationContext()
+        {
+            try
+            {
+                return defaultSolutionNavigation?.GetContext();
+            }
+            catch (Exception exception)
+            {
+                LogError("Unable to resolve the Default solution: " + exception);
+                return null;
+            }
+        }
+
+        private sealed class ScanProgressState
+        {
+            public string ScannerName { get; private set; }
+
+            public string StatusMessage { get; set; }
+
+            public ScannerProgressKind State { get; private set; }
+
+            public int Current { get; private set; }
+
+            public int Total { get; private set; }
+
+            public ScannerResult CompletedScanner { get; set; }
+
+            public static ScanProgressState Started(string scannerName)
+            {
+                return new ScanProgressState
+                {
+                    ScannerName = scannerName,
+                    StatusMessage = "Starting " + DisplayName(scannerName) + "...",
+                    State = ScannerProgressKind.Started,
+                };
+            }
+
+            public static ScanProgressState Progress(
+                string scannerName,
+                string statusMessage,
+                int current,
+                int total
+            )
+            {
+                return new ScanProgressState
+                {
+                    ScannerName = scannerName,
+                    StatusMessage = statusMessage,
+                    State = ScannerProgressKind.Progress,
+                    Current = current,
+                    Total = total,
+                };
+            }
+
+            public static ScanProgressState Completed(ScannerResult scannerResult)
+            {
+                return new ScanProgressState
+                {
+                    ScannerName = scannerResult.ScannerName,
+                    StatusMessage = CreateScannerCompletionMessage(scannerResult),
+                    State = ScannerProgressKind.Completed,
+                    CompletedScanner = scannerResult,
+                };
+            }
+        }
+
+        private sealed class ScanProgressBuffer
+        {
+            private readonly object syncRoot = new object();
+            private readonly Dictionary<string, ScanProgressState> latestStates = new Dictionary<
+                string,
+                ScanProgressState
+            >(StringComparer.OrdinalIgnoreCase);
+
+            public void Publish(ScanProgressState progressState)
+            {
+                if (progressState == null)
+                {
+                    return;
+                }
+
+                lock (syncRoot)
+                {
+                    latestStates[progressState.ScannerName] = progressState;
+                }
+            }
+
+            public IReadOnlyCollection<ScanProgressState> Drain()
+            {
+                lock (syncRoot)
+                {
+                    var states = latestStates.Values.ToList();
+                    latestStates.Clear();
+                    return states;
+                }
+            }
+
+            public void Clear()
+            {
+                lock (syncRoot)
+                {
+                    latestStates.Clear();
+                }
+            }
+        }
+
+        private enum ScannerProgressKind
+        {
+            Started,
+            Progress,
+            Completed,
         }
     }
 }

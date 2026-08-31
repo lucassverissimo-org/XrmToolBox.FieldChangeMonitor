@@ -94,6 +94,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Services
     internal sealed class WorkflowRepository
     {
         private readonly DataverseQueryService dataverseQueryService;
+        private readonly object cacheLock = new object();
         private IReadOnlyCollection<Entity> cachedWorkflows;
 
         public WorkflowRepository(IOrganizationService organizationService)
@@ -103,34 +104,37 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Services
 
         public IReadOnlyCollection<Entity> GetAll(CancellationToken cancellationToken)
         {
-            if (cachedWorkflows != null)
+            lock (cacheLock)
             {
+                if (cachedWorkflows != null)
+                {
+                    return cachedWorkflows;
+                }
+
+                var query = new QueryExpression("workflow")
+                {
+                    ColumnSet = new ColumnSet(
+                        "workflowid",
+                        "name",
+                        "uniquename",
+                        "category",
+                        "primaryentity",
+                        "statecode",
+                        "statuscode",
+                        "modifiedon",
+                        "triggeronupdateattributelist",
+                        "clientdata",
+                        "xaml",
+                        "description",
+                        "ismanaged"
+                    ),
+                };
+
+                query.Criteria.AddCondition("category", ConditionOperator.In, 0, 2, 4, 5);
+                cachedWorkflows = dataverseQueryService.RetrieveAll(query, cancellationToken);
+
                 return cachedWorkflows;
             }
-
-            var query = new QueryExpression("workflow")
-            {
-                ColumnSet = new ColumnSet(
-                    "workflowid",
-                    "name",
-                    "uniquename",
-                    "category",
-                    "primaryentity",
-                    "statecode",
-                    "statuscode",
-                    "modifiedon",
-                    "triggeronupdateattributelist",
-                    "clientdata",
-                    "xaml",
-                    "description",
-                    "ismanaged"
-                ),
-            };
-
-            query.Criteria.AddCondition("category", ConditionOperator.In, 0, 2, 4, 5);
-            cachedWorkflows = dataverseQueryService.RetrieveAll(query, cancellationToken);
-
-            return cachedWorkflows;
         }
     }
 }
