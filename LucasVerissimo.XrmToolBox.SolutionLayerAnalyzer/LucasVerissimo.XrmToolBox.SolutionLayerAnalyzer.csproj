@@ -61,18 +61,6 @@
     <Compile Include="Controls\OperationStepsControl.Designer.cs">
       <DependentUpon>OperationStepsControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="Controls\SolutionPickerControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\SolutionPickerControl.Designer.cs">
-      <DependentUpon>SolutionPickerControl.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\SolutionPickerPopup.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\SolutionPickerPopup.Designer.cs">
-      <DependentUpon>SolutionPickerPopup.cs</DependentUpon>
-    </Compile>
     <Compile Include="Infrastructure\AnalysisMetrics.cs" />
     <Compile Include="Infrastructure\AnalyzerOptions.cs" />
     <Compile Include="Infrastructure\ComponentTypeRegistry.cs" />
@@ -99,12 +87,6 @@
   <ItemGroup>
     <EmbeddedResource Include="Controls\OperationStepsControl.resx">
       <DependentUpon>OperationStepsControl.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Controls\SolutionPickerControl.resx">
-      <DependentUpon>SolutionPickerControl.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Controls\SolutionPickerPopup.resx">
-      <DependentUpon>SolutionPickerPopup.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="SolutionLayerAnalyzerControl.resx">
       <DependentUpon>SolutionLayerAnalyzerControl.cs</DependentUpon>

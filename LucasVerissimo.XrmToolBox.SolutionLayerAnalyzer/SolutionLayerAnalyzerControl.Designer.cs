@@ -29,7 +29,7 @@ namespace LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer
             this.connectTargetButton = new System.Windows.Forms.Button();
             this.disconnectTargetButton = new System.Windows.Forms.Button();
             this.solutionCaption = new System.Windows.Forms.Label();
-            this.sourceSolutions = new LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.Controls.SolutionPickerControl();
+            this.sourceSolutions = new LucasVerissimo.XrmToolBox.Shared.Controls.GridPickerControl();
             this.loadSolutionsButton = new System.Windows.Forms.Button();
             this.sourceSolutionCaption = new System.Windows.Forms.Label();
             this.sourceSolutionValue = new System.Windows.Forms.Label();
@@ -243,7 +243,7 @@ namespace LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer
             this.sourceSolutions.Name = "sourceSolutions";
             this.sourceSolutions.Size = new System.Drawing.Size(682, 28);
             this.sourceSolutions.TabIndex = 4;
-            this.sourceSolutions.SelectedSolutionChanged += new System.EventHandler(this.SourceSolutionChanged);
+            this.sourceSolutions.SelectedItemChanged += new System.EventHandler(this.SourceSolutionChanged);
             this.loadSolutionsButton.Dock = System.Windows.Forms.DockStyle.Fill;
             this.loadSolutionsButton.Text = "Load Solutions";
             this.loadSolutionsButton.UseVisualStyleBackColor = true;
@@ -517,7 +517,7 @@ namespace LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer
         private System.Windows.Forms.Button connectTargetButton;
         private System.Windows.Forms.Button disconnectTargetButton;
         private System.Windows.Forms.Label solutionCaption;
-        private LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.Controls.SolutionPickerControl sourceSolutions;
+        private LucasVerissimo.XrmToolBox.Shared.Controls.GridPickerControl sourceSolutions;
         private System.Windows.Forms.Button loadSolutionsButton;
         private System.Windows.Forms.Label sourceSolutionCaption;
         private System.Windows.Forms.Label sourceSolutionValue;

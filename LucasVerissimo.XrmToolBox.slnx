@@ -1,5 +1,4 @@
 <Solution>
-  <Project Path="LucasVerissimo.XrmToolBox.ToolManager\LucasVerissimo.XrmToolBox.ToolManager.csproj" />
   <Project
     Path="LucasVerissimo.XrmToolBox.DataverseUsageExplorer\LucasVerissimo.XrmToolBox.DataverseUsageExplorer.csproj"
     Id="c4820e2a-19f8-4dd8-a89c-cf99620f9ec9"
@@ -9,12 +8,13 @@
     Id="968d155e-9cd5-4552-9bc4-a95489cbffc8"
   />
   <Project
+    Path="LucasVerissimo.XrmToolBox.Shared\LucasVerissimo.XrmToolBox.Shared.shproj"
+    Id="26d57429-b7d4-49c8-8c1a-9616d0e7e34a"
+  />
+  <Project
     Path="LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer\LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.csproj"
     Id="df15f89d-7a36-4626-88f4-e7ed9d1431a2"
   />
   <Project Path="LucasVerissimo.XrmToolBox.Tests\LucasVerissimo.XrmToolBox.Tests.csproj" />
-  <Project
-    Path="LucasVerissimo.XrmToolBox.Shared\LucasVerissimo.XrmToolBox.Shared.shproj"
-    Id="26d57429-b7d4-49c8-8c1a-9616d0e7e34a"
-  />
+  <Project Path="LucasVerissimo.XrmToolBox.ToolManager\LucasVerissimo.XrmToolBox.ToolManager.csproj" />
 </Solution>

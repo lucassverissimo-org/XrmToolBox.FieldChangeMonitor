@@ -36,6 +36,11 @@ Examples currently centralized in `Shared.BusinessLogic`:
 - retrieving every page of a `QueryExpression`;
 - resolving localized metadata labels.
 
+Reusable WinForms controls are centralized in `Shared.Controls`. `GridPickerControl` is the standard picker
+for lists that need a searchable and sortable grid. The consuming tool supplies the item identity, display
+text, search rule, and column definitions through `GridPickerConfiguration`; the shared control must not
+reference tool-specific models.
+
 UI models, scanner rules, monitoring rules, and component-opening behavior stay in their owning tool.
 
 ## Readability rules

@@ -6,13 +6,18 @@ changing or removing schema elements.
 
 ## Features
 
-- Search tables and columns by display name or logical name.
+- Select tables and columns from a searchable grid showing display and logical names.
 - Scan business rules, classic workflows, business process flows, and Power Automate flows.
 - Scan model-driven app forms and system views.
 - Scan plugin steps and filtering attributes.
+- Scan JavaScript and HTML web resources for direct logical-name references.
+- Identify Web Resources linked to forms of the selected table and show the linked form as evidence.
 - Show the component name, status, reference type, source property, confidence, modification date, and ID.
 - Open supported components directly in the connected environment.
 - Report progressive per-record scan progress.
+- Add results to the grid whenever each component scanner finishes.
+- Run independent component scanners concurrently with a controlled Dataverse request limit.
+- Preserve results already found when a scan is cancelled.
 - Return one result per component ID to avoid duplicate rows.
 
 ## Requirements
@@ -34,8 +39,9 @@ changing or removing schema elements.
 
 ## How results are detected
 
-The tool combines structured Dataverse queries with XML, JSON, configuration, and filtering-attribute
-inspection. The **Confidence** column distinguishes confirmed structured matches from text-based matches.
+The tool combines structured Dataverse queries with XML, JSON, configuration, filtering-attribute, JavaScript,
+and HTML inspection. JavaScript and HTML web resource content is decoded locally and searched for the selected
+logical name. The **Confidence** column distinguishes confirmed structured matches from text-based matches.
 
 Text-based detection is intentionally broad and can produce false positives. Dataverse components or newer
 component formats that are not included in the current scanners can also contain references that are not
@@ -45,6 +51,12 @@ reported. Review results before changing production customizations.
 
 The tool communicates directly with the Dataverse environment selected in XrmToolBox. It does not send
 environment data to an external service.
+
+## Version 1.1.0
+
+This release adds Web Resource usage detection scoped to the selected table forms, progressive parallel
+scanning with cancellation, live result updates, reusable searchable metadata pickers, duplicate suppression,
+and direct component navigation when the Power Apps or Power Automate editor supports it.
 
 ## Version 1.0.3
 

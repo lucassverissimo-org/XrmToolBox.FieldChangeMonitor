@@ -1,6 +1,6 @@
-namespace LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.Controls
+namespace LucasVerissimo.XrmToolBox.Shared.Controls
 {
-    partial class SolutionPickerControl
+    partial class GridPickerControl
     {
         private System.ComponentModel.IContainer components = null;
 
@@ -29,14 +29,14 @@ namespace LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.Controls
             this.valueTextBox.Name = "valueTextBox";
             this.valueTextBox.Size = new System.Drawing.Size(266, 23);
             this.valueTextBox.TabIndex = 0;
-            this.valueTextBox.Text = "Load solutions to begin";
+            this.valueTextBox.Text = "Configure picker";
             this.valueTextBox.Click += new System.EventHandler(this.ValueTextBoxClick);
             this.valueTextBox.TextChanged += new System.EventHandler(this.ValueTextBoxTextChanged);
             this.valueTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ValueTextBoxKeyDown);
             //
             // openButton
             //
-            this.openButton.AccessibleName = "Open Source solution list";
+            this.openButton.AccessibleName = "Open selection list";
             this.openButton.Dock = System.Windows.Forms.DockStyle.Right;
             this.openButton.Location = new System.Drawing.Point(266, 0);
             this.openButton.Name = "openButton";
@@ -46,7 +46,7 @@ namespace LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.Controls
             this.openButton.UseVisualStyleBackColor = true;
             this.openButton.Click += new System.EventHandler(this.OpenButtonClick);
             //
-            // SolutionPickerControl
+            // GridPickerControl
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -54,7 +54,7 @@ namespace LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.Controls
             this.Controls.Add(this.openButton);
             this.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.MinimumSize = new System.Drawing.Size(180, 25);
-            this.Name = "SolutionPickerControl";
+            this.Name = "GridPickerControl";
             this.Size = new System.Drawing.Size(300, 25);
             this.ResumeLayout(false);
             this.PerformLayout();

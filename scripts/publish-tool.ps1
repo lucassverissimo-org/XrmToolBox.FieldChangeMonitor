@@ -104,7 +104,7 @@ if ((Test-NuGetVersionExists -RequestedVersion $packageVersion) -eq $true) {
 Write-Host "Preparando $($manifest.packageId) $Version"
 Set-RegexValue -Path $assemblyInfoPath -Pattern '(AssemblyVersion\(")[^"]+("\)\])' -Value $Version
 Set-RegexValue -Path $assemblyInfoPath -Pattern '(AssemblyFileVersion\(")[^"]+("\)\])' -Value $Version
-Set-RegexValue -Path $nuspecPath -Pattern '(<version>)[^<]+(</version>)' -Value $Version
+Set-RegexValue -Path $nuspecPath -Pattern '(<version>)[^<]+(</version>)' -Value $packageVersion
 $escapedReleaseNotes = [Security.SecurityElement]::Escape($ReleaseNotes.Trim())
 Set-RegexValue `
     -Path $nuspecPath `

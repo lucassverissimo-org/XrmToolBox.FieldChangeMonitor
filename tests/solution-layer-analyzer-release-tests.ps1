@@ -104,11 +104,11 @@ try {
     $pluginAssembly = [Reflection.Assembly]::LoadFrom($assemblyPath)
     $controlType = $pluginAssembly.GetType("LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.SolutionLayerAnalyzerControl", $false)
     $pluginType = $pluginAssembly.GetType("LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.MyPlugin", $false)
-    $solutionPickerType = $pluginAssembly.GetType("LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.Controls.SolutionPickerControl", $false)
+    $solutionPickerType = $pluginAssembly.GetType("LucasVerissimo.XrmToolBox.Shared.Controls.GridPickerControl", $false)
     $solutionInfoType = $pluginAssembly.GetType("LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.Models.SolutionInfo", $false)
     Assert-True ($null -ne $controlType) "Plugin control is compiled"
     Assert-True ($null -ne $pluginType) "MEF plugin entry point is compiled"
-    Assert-True ($null -ne $solutionPickerType) "Searchable solution grid selector is compiled"
+    Assert-True ($null -ne $solutionPickerType) "Shared searchable grid picker is compiled"
     Assert-True ($controlType.BaseType.FullName -eq "XrmToolBox.Extensibility.MultipleConnectionsPluginControlBase") "Control uses the XrmToolBox multiple-connection base class"
     Assert-True ($null -ne $pluginAssembly.GetType("LucasVerissimo.XrmToolBox.Shared.BusinessLogic.DataverseQueryService", $false)) "Plugin contains Shared Project query infrastructure"
     Assert-True (-not ((Get-AssemblyReferenceNames $assemblyPath) -contains "LucasVerissimo.XrmToolBox.Shared")) "Plugin has no external Shared reference"
@@ -116,13 +116,10 @@ try {
     $pluginControl = $plugin.GetControl()
     try {
         Assert-True ($pluginControl.GetType() -eq $controlType -and $pluginControl.Controls.Count -gt 0) "Plugin creates and initializes its WinForms control"
-    }
-    finally {
-        $pluginControl.Dispose()
-    }
+        $solutionPickerField = $controlType.GetField("sourceSolutions", [Reflection.BindingFlags]"Instance, NonPublic")
+        $solutionPicker = $solutionPickerField.GetValue($pluginControl)
+        Assert-True ($solutionPicker.GetType() -eq $solutionPickerType) "Analyzer uses the Shared grid picker from main"
 
-    $solutionPicker = [Activator]::CreateInstance($solutionPickerType)
-    try {
         $solution = [Activator]::CreateInstance($solutionInfoType)
         $solution.SolutionId = [Guid]::NewGuid()
         $solution.FriendlyName = "Display Name"
@@ -131,17 +128,20 @@ try {
         $solutionListType = [Collections.Generic.List``1].MakeGenericType($solutionInfoType)
         $solutionList = [Activator]::CreateInstance($solutionListType)
         $solutionList.Add($solution)
-        $solutionPicker.SetSolutions($solutionList)
+        $setItemsMethod = $solutionPickerType.GetMethod("SetItems").MakeGenericMethod($solutionInfoType)
+        $setItemsArguments = [object[]]::new(1)
+        $setItemsArguments[0] = $solutionList
+        $setItemsMethod.Invoke($solutionPicker, $setItemsArguments) | Out-Null
 
         $popupField = $solutionPickerType.GetField("popup", [Reflection.BindingFlags]"Instance, NonPublic")
         $popup = $popupField.GetValue($solutionPicker)
-        $popup.SelectSolution($solution)
-        $acceptMethod = $solutionPickerType.GetMethod("PopupSolutionAccepted", [Reflection.BindingFlags]"Instance, NonPublic")
+        $popup.SelectItem($solution)
+        $acceptMethod = $solutionPickerType.GetMethod("PopupItemAccepted", [Reflection.BindingFlags]"Instance, NonPublic")
         $acceptMethod.Invoke($solutionPicker, @($popup, [EventArgs]::Empty)) | Out-Null
-        Assert-True ($solutionPicker.SelectedSolution.SolutionId -eq $solution.SolutionId) "Solution grid selector returns the selected typed solution"
+        Assert-True ($solutionPicker.SelectedItem.SolutionId -eq $solution.SolutionId) "Shared solution grid returns the selected typed solution"
     }
     finally {
-        $solutionPicker.Dispose()
+        $pluginControl.Dispose()
     }
 
     if ($failures.Count -gt 0) {

@@ -10,8 +10,29 @@
     <Compile Include="BusinessLogic\DataverseMetadataService.cs" />
     <Compile Include="BusinessLogic\DataverseQueryService.cs" />
     <Compile Include="BusinessLogic\MetadataLabelResolver.cs" />
+    <Compile Include="Controls\GridPickerConfiguration.cs" />
+    <Compile Include="Controls\GridPickerControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\GridPickerControl.Designer.cs">
+      <DependentUpon>GridPickerControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\GridPickerPopup.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\GridPickerPopup.Designer.cs">
+      <DependentUpon>GridPickerPopup.cs</DependentUpon>
+    </Compile>
     <Compile Include="LookupValuePickerForm.cs" />
     <Compile Include="OptionSetValuePickerForm.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Controls\GridPickerControl.resx">
+      <DependentUpon>GridPickerControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Controls\GridPickerPopup.resx">
+      <DependentUpon>GridPickerPopup.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <None Include="LucasVerissimo.XrmToolBox.Shared.projitems" />

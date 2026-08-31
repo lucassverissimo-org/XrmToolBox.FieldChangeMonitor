@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using LucasVerissimo.XrmToolBox.Shared.Controls;
 using LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.Infrastructure;
 using LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.Models;
 using LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer.Services;
@@ -53,11 +54,68 @@ namespace LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer
         public SolutionLayerAnalyzerControl()
         {
             InitializeComponent();
+            ConfigureSolutionPicker();
             componentTypeFilter.SelectedIndex = 0;
             statusFilter.SelectedIndex = 0;
             resultsGrid.AutoGenerateColumns = false;
             UpdateConnectionLabels();
             UpdateActionState();
+        }
+
+        private void ConfigureSolutionPicker()
+        {
+            sourceSolutions.Configure(
+                new GridPickerConfiguration
+                {
+                    ItemName = "solutions",
+                    SearchEnabled = true,
+                    SortingEnabled = true,
+                    DisplayTextSelector = item =>
+                    {
+                        var solution = (SolutionInfo)item;
+                        return solution.FriendlyName + "  —  " + solution.UniqueName;
+                    },
+                    IdentitySelector = item => ((SolutionInfo)item).SolutionId,
+                    SearchPredicate = (item, search) =>
+                    {
+                        var solution = (SolutionInfo)item;
+                        return Contains(solution.FriendlyName, search)
+                            || Contains(solution.UniqueName, search)
+                            || Contains(solution.Version, search);
+                    },
+                    Columns = new[]
+                    {
+                        new GridPickerColumnDefinition(
+                            "Display Name",
+                            item => ((SolutionInfo)item).FriendlyName
+                        )
+                        {
+                            FillWeight = 38F,
+                        },
+                        new GridPickerColumnDefinition(
+                            "Unique Name",
+                            item => ((SolutionInfo)item).UniqueName
+                        )
+                        {
+                            FillWeight = 32F,
+                        },
+                        new GridPickerColumnDefinition(
+                            "Version",
+                            item => ((SolutionInfo)item).Version
+                        )
+                        {
+                            FillWeight = 16F,
+                        },
+                        new GridPickerColumnDefinition(
+                            "Type",
+                            item => ((SolutionInfo)item).IsManaged ? "Managed" : "Unmanaged"
+                        )
+                        {
+                            FillWeight = 14F,
+                        },
+                    },
+                }
+            );
         }
 
         public override void UpdateConnection(
@@ -71,7 +129,7 @@ namespace LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer
 
             if (!string.Equals(actionName, "AdditionalOrganization", StringComparison.Ordinal))
             {
-                sourceSolutions.ClearSolutions();
+                sourceSolutions.ClearItems();
                 targetSolution = null;
                 ClearAnalysis();
                 UpdateConnectionLabels();
@@ -141,7 +199,7 @@ namespace LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer
 
         private void SourceSolutionChanged(object sender, EventArgs e)
         {
-            if (sourceSolutions.SelectedSolution != null && TargetService != null)
+            if (SelectedSourceSolution != null && TargetService != null)
             {
                 ResolveTargetSolution();
             }
@@ -260,7 +318,7 @@ namespace LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer
                         var solutions = (
                             (IReadOnlyCollection<SolutionInfo>)arguments.Result
                         ).ToList();
-                        sourceSolutions.SetSolutions(solutions);
+                        sourceSolutions.SetItems(solutions);
                         statusLabel.Text =
                             solutions.Count
                             + " Source solutions loaded. Select a solution to compare.";
@@ -1122,7 +1180,7 @@ namespace LucasVerissimo.XrmToolBox.SolutionLayerAnalyzer
 
         private SolutionInfo SelectedSourceSolution
         {
-            get { return sourceSolutions.SelectedSolution; }
+            get { return sourceSolutions.GetSelectedItem<SolutionInfo>(); }
         }
 
         private string SourceEnvironmentName
