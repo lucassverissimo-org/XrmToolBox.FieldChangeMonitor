@@ -52,6 +52,11 @@ reported. Review results before changing production customizations.
 The tool communicates directly with the Dataverse environment selected in XrmToolBox. It does not send
 environment data to an external service.
 
+## Version 1.1.1
+
+This patch recognizes Dataverse table entity-set names in Power Automate actions, correlates column matches
+with the selected table, and restores the column picker correctly after a scan finishes or is cancelled.
+
 ## Version 1.1.0
 
 This release adds Web Resource usage detection scoped to the selected table forms, progressive parallel

@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>LucasVerissimo.XrmToolBox.DataverseUsageExplorer</id>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
     <title>Dataverse Usage Explorer</title>
     <authors>Lucas Verissimo</authors>
     <owners>Lucas Verissimo</owners>
@@ -14,7 +14,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Find where Dataverse tables and columns are used in forms, views, workflows, Power Automate flows, business rules, and plugin steps.</description>
     <summary>Explore dependencies and text references to Dataverse tables and columns.</summary>
-    <releaseNotes>Version 1.1.0 adds Web Resource usage detection scoped to the selected table forms, progressive parallel scanning with cancellation and live results, reusable searchable metadata pickers, duplicate suppression, and direct component navigation links.</releaseNotes>
+    <releaseNotes>Version 1.1.1 recognizes Dataverse entity-set names in Power Automate actions, correlates column references with the selected table, and restores the column picker after scans complete or are cancelled.</releaseNotes>
     <copyright>Copyright (c) Lucas Verissimo 2026</copyright>
     <tags>XrmToolBox Dataverse Dynamics365 Metadata Dependencies Usage Explorer</tags>
     <dependencies>

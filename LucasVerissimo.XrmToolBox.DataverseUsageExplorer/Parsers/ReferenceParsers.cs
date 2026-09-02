@@ -69,6 +69,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Parsers
         public static IReadOnlyCollection<LocatedReference> Find(
             string json,
             string table,
+            string tableEntitySetName,
             string column,
             bool columnSearch
         )
@@ -83,49 +84,51 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Parsers
                     MaxJsonLength = int.MaxValue,
                     RecursionLimit = 256,
                 };
-                foreach (
-                    var property in EnumerateProperties(
-                        serializer.DeserializeObject(json),
-                        string.Empty
-                    )
-                )
+
+                var definition = serializer.DeserializeObject(json);
+                if (columnSearch)
                 {
-                    if (
-                        !columnSearch
-                        && TableKeys.Any(k =>
-                            property.Path.EndsWith(k, StringComparison.OrdinalIgnoreCase)
+                    found.AddRange(
+                        FindColumnReferencesForTable(
+                            definition,
+                            string.Empty,
+                            table,
+                            tableEntitySetName,
+                            column
                         )
-                        && string.Equals(property.Value, table, StringComparison.OrdinalIgnoreCase)
-                    )
-                        found.Add(Make(property, "Dataverse Trigger Table"));
-                    if (
-                        columnSearch
-                        && (
-                            TextReferenceParser.Find(
-                                property.Value,
-                                column,
-                                "clientdata",
-                                "Field Reference"
-                            ) != null
-                            || TextReferenceParser.Find(
-                                property.Path,
-                                column,
-                                "clientdata",
-                                "Field Reference"
-                            ) != null
+                    );
+                }
+                else
+                {
+                    foreach (var property in EnumerateProperties(definition, string.Empty))
+                    {
+                        if (
+                            IsTablePropertyPath(property.Path)
+                            && MatchesTable(property.Value, table, tableEntitySetName)
                         )
-                    )
-                        found.Add(Make(property, Classify(property.Path)));
+                        {
+                            found.Add(Make(property, ClassifyTableReference(property.Path)));
+                        }
+                    }
                 }
             }
             catch
             {
-                var hit = TextReferenceParser.Find(
-                    json,
-                    columnSearch ? column : table,
-                    "clientdata",
-                    columnSearch ? "Field Reference" : "Table Reference"
-                );
+                if (columnSearch)
+                {
+                    return found;
+                }
+
+                var hit = TextReferenceParser.Find(json, table, "clientdata", "Table Reference");
+                if (hit == null && !string.IsNullOrWhiteSpace(tableEntitySetName))
+                {
+                    hit = TextReferenceParser.Find(
+                        json,
+                        tableEntitySetName,
+                        "clientdata",
+                        "Table Reference"
+                    );
+                }
                 if (hit != null)
                     found.Add(hit);
             }
@@ -133,6 +136,83 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Parsers
                 .GroupBy(x => x.ReferenceType + "|" + x.Snippet)
                 .Select(x => x.First())
                 .ToList();
+        }
+
+        private static IEnumerable<LocatedReference> FindColumnReferencesForTable(
+            object value,
+            string path,
+            string tableLogicalName,
+            string tableEntitySetName,
+            string columnLogicalName
+        )
+        {
+            var dictionary = value as IDictionary<string, object>;
+            if (dictionary != null)
+            {
+                var containsSelectedTable = dictionary.Any(pair =>
+                    IsTablePropertyName(pair.Key)
+                    && MatchesTable(
+                        ConvertJsonValue(pair.Value),
+                        tableLogicalName,
+                        tableEntitySetName
+                    )
+                );
+
+                if (containsSelectedTable)
+                {
+                    foreach (var property in EnumerateProperties(dictionary, path))
+                    {
+                        if (ContainsColumnReference(property, columnLogicalName))
+                        {
+                            yield return Make(property, Classify(property.Path));
+                        }
+                    }
+                }
+
+                foreach (var pair in dictionary)
+                {
+                    var childPath = string.IsNullOrWhiteSpace(path)
+                        ? pair.Key
+                        : path + "." + pair.Key;
+
+                    foreach (
+                        var reference in FindColumnReferencesForTable(
+                            pair.Value,
+                            childPath,
+                            tableLogicalName,
+                            tableEntitySetName,
+                            columnLogicalName
+                        )
+                    )
+                    {
+                        yield return reference;
+                    }
+                }
+
+                yield break;
+            }
+
+            var array = value as object[];
+            if (array == null)
+            {
+                yield break;
+            }
+
+            for (var index = 0; index < array.Length; index++)
+            {
+                foreach (
+                    var reference in FindColumnReferencesForTable(
+                        array[index],
+                        path + "[" + index + "]",
+                        tableLogicalName,
+                        tableEntitySetName,
+                        columnLogicalName
+                    )
+                )
+                {
+                    yield return reference;
+                }
+            }
         }
 
         private static IEnumerable<JsonProperty> EnumerateProperties(object value, string path)
@@ -201,6 +281,61 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Parsers
             if (p.Contains("condition"))
                 return "Condition";
             return "Field Reference";
+        }
+
+        private static bool MatchesTable(string value, string logicalName, string entitySetName)
+        {
+            return string.Equals(value, logicalName, StringComparison.OrdinalIgnoreCase)
+                || (
+                    !string.IsNullOrWhiteSpace(entitySetName)
+                    && string.Equals(value, entitySetName, StringComparison.OrdinalIgnoreCase)
+                );
+        }
+
+        private static bool IsTablePropertyName(string propertyName)
+        {
+            return TableKeys.Any(tableKey =>
+                string.Equals(propertyName, tableKey, StringComparison.OrdinalIgnoreCase)
+            );
+        }
+
+        private static bool IsTablePropertyPath(string propertyPath)
+        {
+            return TableKeys.Any(tableKey =>
+                propertyPath.EndsWith(tableKey, StringComparison.OrdinalIgnoreCase)
+            );
+        }
+
+        private static bool ContainsColumnReference(JsonProperty property, string columnLogicalName)
+        {
+            return TextReferenceParser.Find(
+                    property.Value,
+                    columnLogicalName,
+                    "clientdata",
+                    "Field Reference"
+                ) != null
+                || TextReferenceParser.Find(
+                    property.Path,
+                    columnLogicalName,
+                    "clientdata",
+                    "Field Reference"
+                ) != null;
+        }
+
+        private static string ConvertJsonValue(object value)
+        {
+            return value == null
+                ? string.Empty
+                : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        private static string ClassifyTableReference(string path)
+        {
+            var isTriggerReference =
+                path.IndexOf("trigger", StringComparison.OrdinalIgnoreCase) >= 0
+                || path.IndexOf("subscriptionRequest", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            return isTriggerReference ? "Dataverse Trigger Table" : "Dataverse Action Table";
         }
 
         private sealed class JsonProperty
