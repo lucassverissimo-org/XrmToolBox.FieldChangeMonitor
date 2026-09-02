@@ -23,6 +23,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
         private MetadataService metadata;
         private DefaultSolutionNavigationService defaultSolutionNavigation;
         private CancellationTokenSource cancellation;
+        private bool isScanRunning;
         private List<UsageReference> results = new List<UsageReference>();
         private string environmentUrl;
         private readonly ScanProgressBuffer scanProgressBuffer = new ScanProgressBuffer();
@@ -227,7 +228,11 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
 
         private void UpdateColumnStep()
         {
-            columnStep.Enabled = byColumn.Checked && tables.SelectedItem is MetadataListItem;
+            var canSelectColumn =
+                !isScanRunning && byColumn.Checked && tables.SelectedItem is MetadataListItem;
+
+            columnStep.Enabled = canSelectColumn;
+            columns.Enabled = canSelectColumn;
         }
 
         private string SelectedTable
@@ -246,6 +251,15 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
                 return (tables.SelectedItem as MetadataListItem) == null
                     ? null
                     : ((MetadataListItem)tables.SelectedItem).ObjectTypeCode;
+            }
+        }
+        private string SelectedTableEntitySetName
+        {
+            get
+            {
+                return (tables.SelectedItem as MetadataListItem) == null
+                    ? null
+                    : ((MetadataListItem)tables.SelectedItem).EntitySetName;
             }
         }
         private string SelectedColumn
@@ -335,6 +349,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
                 Service = Service,
                 SearchType = byColumn.Checked ? UsageSearchType.Column : UsageSearchType.Table,
                 TableLogicalName = SelectedTable,
+                TableEntitySetName = SelectedTableEntitySetName,
                 TableObjectTypeCode = SelectedTableObjectTypeCode,
                 ColumnLogicalName = SelectedColumn,
             };
@@ -553,10 +568,10 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
 
         private void SetScanRunningState(bool isRunning)
         {
+            isScanRunning = isRunning;
             byTable.Enabled = !isRunning;
             byColumn.Enabled = !isRunning;
             tables.Enabled = !isRunning;
-            columns.Enabled = !isRunning && byColumn.Checked;
             loadTables.Enabled = !isRunning && Service != null;
             componentFilter.Enabled = !isRunning;
             search.Enabled = !isRunning;
@@ -564,6 +579,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
                 SelectedReference != null && !string.IsNullOrWhiteSpace(environmentUrl);
             grid.Enabled = true;
             cancel.Enabled = isRunning;
+            UpdateColumnStep();
 
             if (isRunning)
             {
@@ -574,7 +590,6 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer
                 scan.StopLoading();
                 scan.Enabled = Service != null;
                 cancel.Text = "Cancel";
-                UpdateColumnStep();
             }
         }
 

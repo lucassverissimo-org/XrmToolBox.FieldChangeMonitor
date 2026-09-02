@@ -20,6 +20,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Models
     {
         public UsageSearchType SearchType { get; set; }
         public string TableLogicalName { get; set; }
+        public string TableEntitySetName { get; set; }
         public int? TableObjectTypeCode { get; set; }
         public string ColumnLogicalName { get; set; }
         public IOrganizationService Service { get; set; }
@@ -53,6 +54,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Models
     internal sealed class MetadataListItem
     {
         public string LogicalName { get; set; }
+        public string EntitySetName { get; set; }
         public string DisplayName { get; set; }
         public int? ObjectTypeCode { get; set; }
 

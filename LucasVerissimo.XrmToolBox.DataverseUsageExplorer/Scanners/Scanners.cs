@@ -197,6 +197,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Scanners
                     var hit in PowerAutomateParser.Find(
                         e.GetAttributeValue<string>("clientdata"),
                         context.TableLogicalName,
+                        context.TableEntitySetName,
                         context.ColumnLogicalName,
                         context.SearchType == UsageSearchType.Column
                     )
@@ -221,6 +222,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Scanners
                             IsManaged = e.GetAttributeValue<bool?>("ismanaged"),
                             Confidence =
                                 hit.ReferenceType == "Dataverse Trigger Table"
+                                || hit.ReferenceType == "Dataverse Action Table"
                                     ? ReferenceConfidence.Confirmed
                                     : ReferenceConfidence.TextMatch,
                         }

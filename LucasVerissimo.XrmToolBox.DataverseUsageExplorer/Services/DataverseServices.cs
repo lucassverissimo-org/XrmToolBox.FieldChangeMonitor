@@ -76,6 +76,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Services
             return new MetadataListItem
             {
                 LogicalName = entity.LogicalName,
+                EntitySetName = entity.EntitySetName,
                 DisplayName = MetadataLabelResolver.GetDisplayName(entity),
                 ObjectTypeCode = entity.ObjectTypeCode,
             };
