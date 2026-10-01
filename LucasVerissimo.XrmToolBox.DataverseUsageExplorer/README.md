@@ -52,6 +52,11 @@ reported. Review results before changing production customizations.
 The tool communicates directly with the Dataverse environment selected in XrmToolBox. It does not send
 environment data to an external service.
 
+## Version 1.1.2
+
+This patch scopes column searches to the selected Dataverse table in process definitions, Power Automate
+actions, and views, preventing matches from identically named columns on unrelated tables.
+
 ## Version 1.1.1
 
 This patch recognizes Dataverse table entity-set names in Power Automate actions, correlates column matches

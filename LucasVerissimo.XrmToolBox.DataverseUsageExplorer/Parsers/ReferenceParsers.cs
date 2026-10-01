@@ -160,7 +160,9 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Parsers
 
                 if (containsSelectedTable)
                 {
-                    foreach (var property in EnumerateProperties(dictionary, path))
+                    foreach (
+                        var property in EnumeratePropertiesInTableScope(dictionary, path, true)
+                    )
                     {
                         if (ContainsColumnReference(property, columnLogicalName))
                         {
@@ -213,6 +215,69 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Parsers
                     yield return reference;
                 }
             }
+        }
+
+        private static IEnumerable<JsonProperty> EnumeratePropertiesInTableScope(
+            object value,
+            string path,
+            bool isScopeRoot
+        )
+        {
+            var dictionary = value as IDictionary<string, object>;
+            if (dictionary != null)
+            {
+                if (!isScopeRoot && dictionary.Keys.Any(IsTablePropertyName))
+                {
+                    yield break;
+                }
+
+                foreach (var pair in dictionary)
+                {
+                    var childPath = string.IsNullOrWhiteSpace(path)
+                        ? pair.Key
+                        : path + "." + pair.Key;
+                    foreach (
+                        var nested in EnumeratePropertiesInTableScope(pair.Value, childPath, false)
+                    )
+                    {
+                        yield return nested;
+                    }
+                }
+
+                yield break;
+            }
+
+            var array = value as object[];
+            if (array != null)
+            {
+                for (var index = 0; index < array.Length; index++)
+                {
+                    foreach (
+                        var nested in EnumeratePropertiesInTableScope(
+                            array[index],
+                            path + "[" + index + "]",
+                            false
+                        )
+                    )
+                    {
+                        yield return nested;
+                    }
+                }
+
+                yield break;
+            }
+
+            yield return new JsonProperty
+            {
+                Path = path,
+                Value =
+                    value == null
+                        ? string.Empty
+                        : Convert.ToString(
+                            value,
+                            System.Globalization.CultureInfo.InvariantCulture
+                        ),
+            };
         }
 
         private static IEnumerable<JsonProperty> EnumerateProperties(object value, string path)
@@ -350,7 +415,8 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Parsers
         public static IReadOnlyCollection<LocatedReference> FindViewReferences(
             string xml,
             string column,
-            string source
+            string source,
+            string tableLogicalName
         )
         {
             var result = new List<LocatedReference>();
@@ -369,7 +435,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Parsers
                                         column,
                                         StringComparison.OrdinalIgnoreCase
                                     )
-                                )
+                                ) && BelongsToTable(e, doc, tableLogicalName)
                         )
                 )
                 {
@@ -397,6 +463,110 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Parsers
                     result.Add(hit);
             }
             return result;
+        }
+
+        private static bool BelongsToTable(
+            XElement element,
+            XDocument document,
+            string tableLogicalName
+        )
+        {
+            var explicitEntityName = element
+                .Attributes()
+                .FirstOrDefault(attribute =>
+                    string.Equals(
+                        attribute.Name.LocalName,
+                        "entityname",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
+            if (explicitEntityName != null)
+            {
+                return MatchesTableOrAlias(explicitEntityName.Value, document, tableLogicalName);
+            }
+
+            var entityScope = element
+                .AncestorsAndSelf()
+                .FirstOrDefault(candidate =>
+                    string.Equals(
+                        candidate.Name.LocalName,
+                        "entity",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                    || string.Equals(
+                        candidate.Name.LocalName,
+                        "link-entity",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
+            if (entityScope == null)
+            {
+                return true;
+            }
+
+            var scopeName = entityScope
+                .Attributes()
+                .FirstOrDefault(attribute =>
+                    string.Equals(
+                        attribute.Name.LocalName,
+                        "name",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
+            return scopeName != null
+                && string.Equals(
+                    scopeName.Value,
+                    tableLogicalName,
+                    StringComparison.OrdinalIgnoreCase
+                );
+        }
+
+        private static bool MatchesTableOrAlias(
+            string entityName,
+            XDocument document,
+            string tableLogicalName
+        )
+        {
+            if (string.Equals(entityName, tableLogicalName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return document
+                .Descendants()
+                .Where(element =>
+                    string.Equals(
+                        element.Name.LocalName,
+                        "link-entity",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                .Any(element =>
+                    string.Equals(
+                        GetAttributeValue(element, "alias"),
+                        entityName,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                    && string.Equals(
+                        GetAttributeValue(element, "name"),
+                        tableLogicalName,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
+        }
+
+        private static string GetAttributeValue(XElement element, string attributeName)
+        {
+            var attribute = element
+                .Attributes()
+                .FirstOrDefault(candidate =>
+                    string.Equals(
+                        candidate.Name.LocalName,
+                        attributeName,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
+            return attribute == null ? null : attribute.Value;
         }
     }
 }

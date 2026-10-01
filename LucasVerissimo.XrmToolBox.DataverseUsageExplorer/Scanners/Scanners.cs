@@ -56,6 +56,7 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Scanners
                     x.GetAttributeValue<OptionSetValue>("category") != null
                     && x.GetAttributeValue<OptionSetValue>("category").Value == category
                 )
+                .Where(x => MatchesSelectedTable(x, context))
                 .ToList();
             var current = 0;
             foreach (var workflow in workflows)
@@ -67,6 +68,20 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Scanners
                     rows.Add(Create(workflow, context, hit));
             }
             return rows;
+        }
+
+        private static bool MatchesSelectedTable(Entity workflow, UsageSearchContext context)
+        {
+            if (context.SearchType != UsageSearchType.Column)
+            {
+                return true;
+            }
+
+            return string.Equals(
+                workflow.GetAttributeValue<string>("primaryentity"),
+                context.TableLogicalName,
+                StringComparison.OrdinalIgnoreCase
+            );
         }
 
         private IEnumerable<LocatedReference> Find(Entity workflow, UsageSearchContext context)
@@ -441,13 +456,15 @@ namespace LucasVerissimo.XrmToolBox.DataverseUsageExplorer.Scanners
                 .FindViewReferences(
                     e.GetAttributeValue<string>("fetchxml"),
                     c.ColumnLogicalName,
-                    "fetchxml"
+                    "fetchxml",
+                    c.TableLogicalName
                 )
                 .Concat(
                     XmlReferenceParser.FindViewReferences(
                         e.GetAttributeValue<string>("layoutxml"),
                         c.ColumnLogicalName,
-                        "layoutxml"
+                        "layoutxml",
+                        c.TableLogicalName
                     )
                 )
                 .Select(x => Reference(e, c, x.ReferenceType, x.FoundIn, x.Snippet));
