@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ApplicationIcon" xml:space="preserve">
+    <value>AAABAAEAgIAAAAEAIADeBAAAFgAAAIlQTkcNChoKAAAADUlIRFIAAACAAAAAgAgGAAAAwz5hywAAAAFzUkdCAK7OHOkAAAAEZ0FNQQAAsY8L/GEFAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAEc0lEQVR4Xu3ZwY3jVhRE0Y7BkTiKWTgpA85lMnAok0qv2/gDECCuKTWLeizq89XiLDwjC1f/1W4+/vjzr6/o64N/EL1kAM1lAM1lAM1lAM1lAM1lAM1lAM1lAM1lAM1lAM1lAM1lAM1lAM1lAM1lAM1lAM1lAM1lAM29NIDPz89Lsecq7HJjjyIDKMAuN/YoMoAC7HJjjyIDKMAuN/YoMoAC7HJjjyIDKMAuN/YoMoAC7HJjjyIDKMAuN/YoMoAC7HJjjyIDKMAuN/YoMoAC7HJjjyIDKMAuN/YoThvAj3/+LcHvrfrhldg10ztkAAXYNdM7ZAAF2DXTO2QABdg10ztkAAXYNdM7ZAAF2DXTO2QABdg10zucNgAH9lyFXW7sUWQABdjlxh5FBlCAXW7sUWQABdjlxh5FBlCAXW7sUWQABdjlxh5FBlCAXW7sUWQAO/399es3/vnALjf2KDKAbyyHzwA2MMSNPZV4+AxgA0Pc2FOBByd+fmCXG3sUGQDw4MTPD+xyY4/itAHwHzOO4vdW/fBnePRXBsDfcxS/t+odMoANPHoG8ABDZvrhj/DgxM8P7JrpHW4zgK+fH7+xUcFjr4+eAWxgyJU/fBnAK0Pg4Z8dfY1dV76D6hYD4PGPjIBH33v8gV1XvcMR0w+ARyc2b+HRleMP7LriHY46bQAOSwePvoXtazx85QAc2KO4xQAWPDrx8wOPrh5/YJcbexS3GsDAo9P6szz6keMP7HJjj+J2Axh49C08egZwAEPc2EM8+p4B8Dv2YJcbexS3HsDAw1cff2CXG3sUtx/AcObxB3a5sUfRYgCLZwMYf8fP78UuN/YoWg2AR18ff239//C/t7DLjT2KNgPg0R8dnyPIAJ5giBt7nuHhvxvA1hgeYZcbexQtBsCjL8bf8diP8DvX2OXGHsVpA+A/ZhzF71V/OI++Pv4aD078/Bq73vEdHskAVnh04ucX7HrHd3jk1gPg0Z8df8GjZwBPMOSdfjiP/urxn42AXe/0Dt+55QB49D3HX/DgxM8P7HqXd9gjAyjArnd5hz1uNwAe/ezjD+x6h3fY67QBOLCHR3ccf2CXG3sUGUABdrmxR3GbAfDoruMP7HJjj+IWA+DRnccf2OXGHkUGUIBdbuxRTD8AHt19/IFdbuxR3HIA7Dwbu9zYo5h+AEMG8P+mvW4xgMUVxx/Y5cYexa0GcBV2ubFHkQEUYJcbexQZQAF2ubFHcdoA+I8ZR/F7q354JXbN9A4ZQAF2zfQOGUABds30DhlAAXbN9A4ZQAF2zfQOGUABds30DhlAAXbN9A6nDcCBPVdhlxt7FBlAAXa5sUeRARRglxt7FBlAAXa5sUeRARRglxt7FBlAAXa5sUeRARRglxt7FBlAAXa5sUeRARRglxt7FBlAAXa5sUeRARRglxt7FBlAAXa5sUfx0gBifhlAcxlAcxlAcxlAcxlAcxlAcxlAcxlAcxlAcxlAcxlAcxlAcxlAcxlAcxlAcxlAcxlAcxlAcxlAc/8BY8a0XYnl7zIAAAAASUVORK5CYII=</value>
+  </data>
+</root>

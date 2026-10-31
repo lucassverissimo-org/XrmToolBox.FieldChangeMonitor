@@ -9,6 +9,7 @@ project, assembly, NuGet package, documentation, version, and release lifecycle.
 | --- | --- | --- | --- |
 | Field Change Monitor | Monitor Dataverse field changes with FetchXML filters, history, and Windows alerts. | [NuGet](https://www.nuget.org/packages/LucasVerissimo.XrmToolBox.FieldChangeMonitor) | [Documentation](LucasVerissimo.XrmToolBox.FieldChangeMonitor/README.md) |
 | Dataverse Usage Explorer | Find where Dataverse tables and columns are referenced by solution components. | [NuGet](https://www.nuget.org/packages/LucasVerissimo.XrmToolBox.DataverseUsageExplorer) | [Documentation](LucasVerissimo.XrmToolBox.DataverseUsageExplorer/README.md) |
+| Dataverse Mapping Manager | Review and adjust related-table column mappings, publish changes, and add components to a solution. | Initial local release | [Documentation](LucasVerissimo.XrmToolBox.DataverseMappingManager/README.md) |
 
 ## Shared library
 

@@ -1,0 +1,14 @@
+{
+  "name": "Dataverse Mapping Manager",
+  "packageId": "LucasVerissimo.XrmToolBox.DataverseMappingManager",
+  "projectPath": "LucasVerissimo.XrmToolBox.DataverseMappingManager.csproj",
+  "nuspecPath": "LucasVerissimo.XrmToolBox.DataverseMappingManager.nuspec",
+  "assemblyInfoPath": "Properties/AssemblyInfo.cs",
+  "packageScriptPath": "../build-dataverse-mapping-manager-package.ps1",
+  "gitUrl": "https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/tree/main/LucasVerissimo.XrmToolBox.DataverseMappingManager",
+  "nuGetUrl": "https://www.nuget.org/packages/LucasVerissimo.XrmToolBox.DataverseMappingManager",
+  "targetFramework": ".NET Framework 4.8",
+  "validationScripts": [
+    "../tests/dataverse-mapping-manager-release-tests.ps1"
+  ]
+}

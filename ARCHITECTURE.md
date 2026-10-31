@@ -1,21 +1,22 @@
 # Architecture
 
-This repository contains two independent XrmToolBox tools, one shared library, and one development application:
+This repository contains three independent XrmToolBox tools, one shared library, and one development application:
 
 - `LucasVerissimo.XrmToolBox.FieldChangeMonitor`: monitoring UI and monitoring rules.
 - `LucasVerissimo.XrmToolBox.DataverseUsageExplorer`: usage-search UI, scanners, and parsers.
+- `LucasVerissimo.XrmToolBox.DataverseMappingManager`: column mapping UI, compatibility rules, staged changes, publication, and solution inclusion.
 - `LucasVerissimo.XrmToolBox.Shared`: a Shared Project containing reusable Dataverse and WinForms source.
 - `LucasVerissimo.XrmToolBox.ToolManager`: an internal WinForms application that discovers tool release manifests,
   validates packages, and coordinates NuGet publishing. It is not an XrmToolBox plugin and is never packaged with a tool.
 
 ## Dependency direction
 
-Both tools import `Shared.projitems`. Shared code must never depend on either tool.
+All three tools import `Shared.projitems`. Shared code must never depend on a tool.
 
 ```text
-FieldChangeMonitor ───────┐
-                          ├──> Shared ──> Microsoft.Xrm.Sdk
-DataverseUsageExplorer ──┘
+FieldChangeMonitor ──────┐
+DataverseUsageExplorer ───┼──> Shared ──> Microsoft.Xrm.Sdk
+DataverseMappingManager ──┘
 ```
 
 ## What belongs in Shared
@@ -61,3 +62,27 @@ version matches the package. `Shared` is never published independently.
 Changes to shared source must be evaluated by rebuilding every consuming tool. Release validation must confirm
 that the plugin assembly has no external Shared assembly reference and contains the required Shared Project
 types.
+
+## Mapping manager
+
+Mapping Manager edits `attributemap` records under an existing directed `entitymap`; it does not create
+relationships or synchronize business data. `MappingWorkspace` keeps the original snapshot and staged changes.
+`MappingRules` validates structural compatibility and unique destinations. `MappingService` rechecks server
+state and metadata before applying changes. Edits replace mappings using delete/create within a transaction.
+Changes sharing old/new destinations form an atomic group; independent groups may succeed separately.
+Confirmed faults preserve pending changes; uncertain communication failures require a reload before retrying.
+Publishing and adding selected components to an unmanaged solution are separate operations with separate results.
+No tool-specific rules were added to Shared. The release manifest is discovered by Tool Manager automatically.
+
+Solution inclusion adds supported table, relationship and column components. Map subcomponents are not added
+individually. `SolutionMappingExportVerifier` reads an unmanaged solution export in memory and confirms exact
+mapping pairs in `customizations.xml`, reporting missing mappings/export failures separately from successful
+component additions. Removal absence is a warning, not confirmation of a downstream deletion. All loaded saved
+mappings are selectable without resaving; only successful session additions/edits are preselected. The solution
+modal derives component dependencies from its own checked mappings and keeps removals in a separate section.
+No export package is modified or imported.
+
+Mapping editing uses a dedicated modal with native constrained column selectors, compatibility validation,
+and an explicit local Apply action. Independent source/target refreshes replace only metadata. Mapping
+refreshes retain pending rows when the original server snapshot is unchanged and reject concurrent changes
+without replacing local work. Refreshing never clears publication state or session export expectations.
