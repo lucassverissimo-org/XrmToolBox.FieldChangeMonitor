@@ -176,15 +176,7 @@ try {
         throw "ID ou versao do nuspec interno nao corresponde ao release solicitado."
     }
 
-    $iconName = [string]$metadata.icon
-    if ([string]::IsNullOrWhiteSpace($iconName) -or $null -eq $archive.GetEntry($iconName)) {
-        throw "O icone declarado nao esta incorporado ao pacote."
-    }
-
-    $deprecatedIconUrl = $packageXml.SelectSingleNode("/n:package/n:metadata/n:iconUrl", $namespace)
-    if ($null -ne $deprecatedIconUrl) {
-        throw "O pacote ainda contem o elemento obsoleto iconUrl."
-    }
+    & (Join-Path $PSScriptRoot 'scripts/test-tool-library-metadata.ps1') -NuspecPath $nuspecPath -PackagePath $packagePath
 
     $localDllPath = Join-Path $releaseDirectory "$packageId.dll"
     $localAssemblyVersion = [System.Reflection.AssemblyName]::GetAssemblyName($localDllPath).Version.ToString()

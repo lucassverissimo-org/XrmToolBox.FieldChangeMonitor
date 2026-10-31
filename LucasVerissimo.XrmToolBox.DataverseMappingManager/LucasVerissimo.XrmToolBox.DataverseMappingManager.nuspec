@@ -2,20 +2,19 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>LucasVerissimo.XrmToolBox.DataverseMappingManager</id>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <title>Dataverse Mapping Manager</title>
     <authors>Lucas Verissimo</authors>
     <owners>Lucas Verissimo</owners>
     <projectUrl>https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/tree/main/LucasVerissimo.XrmToolBox.DataverseMappingManager</projectUrl>
     <repository type="git" url="https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor.git" branch="main" />
     <iconUrl>https://raw.githubusercontent.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/main/LucasVerissimo.XrmToolBox.DataverseMappingManager/Assets/dataverse-mapping-manager-128.png</iconUrl>
-    <icon>dataverse-mapping-manager-128.png</icon>
     <readme>README.md</readme>
     <license type="expression">MIT</license>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Review, validate, create, edit and remove Dataverse column mappings with staged changes, publication and solution packaging.</description>
     <summary>Manage Dataverse column mappings visually.</summary>
-    <releaseNotes>Initial release: guided mapping review and editing, compatibility validation, staged transactional changes, publication results, independent list refresh, and selected solution components with export verification.</releaseNotes>
+    <releaseNotes>Fix Tool Library logo metadata: use only an explicit public PNG iconUrl, matching the registration-compatible packaging pattern. Add release validation to prevent embedded icon metadata from returning.</releaseNotes>
     <copyright>Copyright (c) Lucas Verissimo 2026</copyright>
     <tags>XrmToolBox Dataverse Dynamics365 Metadata Mappings Solutions</tags>
     <dependencies>
@@ -26,7 +25,6 @@
   </metadata>
   <files>
     <file src="..\bin\$configuration$\LucasVerissimo.XrmToolBox.DataverseMappingManager.dll" target="lib\net48\Plugins" />
-    <file src="Assets\dataverse-mapping-manager-128.png" target="" />
     <file src="README.md" target="" />
   </files>
 </package>

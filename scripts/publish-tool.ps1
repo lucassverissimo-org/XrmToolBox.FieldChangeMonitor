@@ -116,6 +116,7 @@ Push-Location $repositoryRoot
 try {
     Invoke-CheckedCommand "Restaurando ferramentas locais" { dotnet tool restore }
     Invoke-CheckedCommand "Verificando a formatação C#" { dotnet csharpier check . }
+    & (Join-Path $PSScriptRoot 'test-tool-library-metadata.ps1') -NuspecPath $nuspecPath
     Invoke-CheckedCommand "Compilando Debug" { dotnet build $projectPath -c Debug }
     Invoke-CheckedCommand "Compilando Release e gerando o pacote" { & $packageScriptPath -Configuration Release }
 
@@ -160,6 +161,7 @@ finally {
 }
 
 $packageHash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash
+& (Join-Path $PSScriptRoot 'test-tool-library-metadata.ps1') -NuspecPath $nuspecPath -PackagePath $packagePath
 Write-Host "Pacote validado: $packagePath"
 Write-Host "SHA256: $packageHash"
 

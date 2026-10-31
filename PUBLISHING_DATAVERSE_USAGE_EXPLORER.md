@@ -18,7 +18,7 @@ The validation builds the Release package and confirms that:
 - the package contains exactly one plugin assembly in `lib/net48/Plugins`;
 - Shared Project types are compiled into the plugin and there is no external Shared assembly reference;
 - the Field Change Monitor assembly is absent;
-- the README and icon are present;
+- the README is packaged and the public PNG iconUrl is valid; do not declare embedded icon metadata;
 - debug symbols and known host dependencies are not bundled.
 
 ## Local installation test
@@ -36,6 +36,8 @@ The validation builds the Release package and confirms that:
    - progress increases per record;
    - **Open Component** opens the selected component;
    - Field Change Monitor still opens and operates normally.
+
+The shared logo compatibility rules in [AGENTS.md](AGENTS.md#xrmtoolbox-tool-library-logo-compatibility) apply to every future release. Use only iconUrl, and run scripts/test-tool-library-metadata.ps1 against the source nuspec and actual package. Do not reintroduce icon/PackageIcon to follow a generic NuGet recommendation.
 
 ## Publish to NuGet.org
 

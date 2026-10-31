@@ -86,9 +86,11 @@ try {
     Assert-True ($packageVersion -eq $normalizedAssemblyVersion) "Package and plugin assembly versions match"
     Assert-True ($projectUrl -eq "https://github.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/tree/main/LucasVerissimo.XrmToolBox.DataverseMappingManager") "Project URL points to the tool documentation"
     Assert-True ($iconUrl -eq "https://raw.githubusercontent.com/lucassverissimo-org/XrmToolBox.FieldChangeMonitor/main/LucasVerissimo.XrmToolBox.DataverseMappingManager/Assets/dataverse-mapping-manager-128.png") "Icon URL points to the public PNG asset"
+    Assert-True ($null -eq $specification.SelectSingleNode("/n:package/n:metadata/n:icon", $namespace)) "Embedded icon metadata is absent for Tool Library compatibility"
 
     $packagePath = Join-Path $repositoryRoot "bin\$Configuration\$packageId.$packageVersion.nupkg"
     Assert-True (Test-Path $packagePath) "Expected NuGet package exists"
+    & (Join-Path $repositoryRoot 'scripts/test-tool-library-metadata.ps1') -NuspecPath $nuspecPath -PackagePath $packagePath
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $archive = [IO.Compression.ZipFile]::OpenRead($packagePath)
@@ -99,27 +101,12 @@ try {
         Assert-True ($entries -contains "lib/net48/Plugins/$packageId.dll") "Plugin assembly is under lib/net48/Plugins"
         Assert-True ($pluginAssemblies.Count -eq 1) "Package contains exactly one plugin assembly"
         Assert-True (-not ($entries -contains "lib/net48/Plugins/LucasVerissimo.XrmToolBox.Shared.dll")) "Shared assembly is not packaged separately"
-        Assert-True ($entries -contains "dataverse-mapping-manager-128.png") "128 x 128 package icon is included"
+        Assert-True (-not ($entries -contains "dataverse-mapping-manager-128.png")) "Logo is served by iconUrl rather than embedded in the package"
         Assert-True ($entries -contains "README.md") "Package README is included"
         Assert-True (-not ($entries -match "FieldChangeMonitor\.dll$")) "Field Change Monitor assembly is not packaged"
         Assert-True (-not ($entries -match "\.pdb$")) "Debug symbols are not included in the release package"
         Assert-True (-not ($entries -match "System\.Memory\.dll$")) "Host framework dependencies are not bundled"
 
-        $iconEntry = $archive.GetEntry("dataverse-mapping-manager-128.png")
-        Add-Type -AssemblyName System.Drawing
-        $iconStream = $iconEntry.Open()
-        try {
-            $iconImage = [Drawing.Image]::FromStream($iconStream)
-            try {
-                Assert-True ($iconImage.Width -eq 128 -and $iconImage.Height -eq 128) "Package icon dimensions are 128 x 128"
-            }
-            finally {
-                $iconImage.Dispose()
-            }
-        }
-        finally {
-            $iconStream.Dispose()
-        }
     }
     finally {
         $archive.Dispose()

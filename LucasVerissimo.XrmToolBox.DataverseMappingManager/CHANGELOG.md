@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Fix Tool Library registration metadata by retaining only the public PNG `iconUrl`, without an embedded `icon` declaration.
+- Enforce the registration-compatible metadata pattern in publication validation and document it for future tools.
+
 ## 1.0.0
 
 Initial public release.

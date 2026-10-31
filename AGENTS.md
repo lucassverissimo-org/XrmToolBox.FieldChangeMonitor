@@ -69,6 +69,19 @@ package. Therefore:
 - Each tool package must contain exactly one assembly directly under `lib/net48/Plugins`, and that assembly's
   version must match the NuGet package version.
 
+## XrmToolBox Tool Library logo compatibility
+
+- Use an explicit, anonymous HTTPS `iconUrl` pointing directly to the tool's public 128 x 128 PNG.
+- Do not declare `<icon>` or `PackageIcon` for Tool Library packages, even alongside `iconUrl`.
+  Previous registrations were rejected with "Logo Url is not valid"; commits `03327c0` and `008251f`
+  established the URL-only pattern. Do not reintroduce embedded icon metadata to satisfy a generic NuGet recommendation.
+- The PNG assets and the plugin's small/large MEF images remain in source; only the NuGet metadata changes.
+- Run `scripts/test-tool-library-metadata.ps1` against both the source nuspec and the actual nupkg before upload.
+  Validate the anonymous image GET, content type, image bytes/dimensions, and the project documentation URL.
+- After NuGet indexing, inspect the exact package/version returned by the portal's search endpoint and retry
+  registration. A successful upload or HTTP 200 for the source logo does not confirm Tool Library acceptance.
+- Published versions cannot be replaced. Corrections require matching new package and assembly versions.
+
 ## Validation checklist
 
 Before handing work back:
